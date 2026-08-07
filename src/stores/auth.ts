@@ -18,10 +18,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function completeOAuth(code: string, state: string) {
     const session = await authApi.oauthCallback(code, state)
+    const nextPermissions = Array.isArray(session.permissions) ? session.permissions : []
     useApplicationStore().reset()
-    saveSession(session)
+    saveSession({ ...session, permissions: nextPermissions })
     user.value = session.user
-    permissions.value = session.permissions
+    permissions.value = nextPermissions
     initialized.value = true
   }
 
@@ -34,7 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const result = await authApi.me()
       user.value = result.user
-      permissions.value = result.permissions
+      permissions.value = Array.isArray(result.permissions) ? result.permissions : []
     } catch {
       clearSession()
       useApplicationStore().reset()

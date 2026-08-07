@@ -68,14 +68,19 @@ api.interceptors.response.use(
 export function saveSession(session: TokenResponse) {
   sessionStorage.setItem(accessTokenKey, session.accessToken)
   sessionStorage.setItem(refreshTokenKey, session.refreshToken)
-  sessionStorage.setItem(sessionKey, JSON.stringify({ user: session.user, permissions: session.permissions, expiresAt: session.expiresAt }))
+  sessionStorage.setItem(sessionKey, JSON.stringify({
+    user: session.user,
+    permissions: Array.isArray(session.permissions) ? session.permissions : [],
+    expiresAt: session.expiresAt,
+  }))
 }
 
 export function loadSession() {
   const value = sessionStorage.getItem(sessionKey)
   if (!value) return null
   try {
-    return JSON.parse(value) as Pick<TokenResponse, 'user' | 'permissions' | 'expiresAt'>
+    const session = JSON.parse(value) as Pick<TokenResponse, 'user' | 'permissions' | 'expiresAt'>
+    return { ...session, permissions: Array.isArray(session.permissions) ? session.permissions : [] }
   } catch {
     clearSession()
     return null
