@@ -11,5 +11,5 @@ export function peopleAuthorizationUrl(authorizationUrl: string, configuredOrigi
 
 export function safeLoginRedirect(value: unknown) {
   const redirect = typeof value === 'string' ? value : ''
-  return redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/permission/dashboard'
+  return redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/systems'
 }

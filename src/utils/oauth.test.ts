@@ -16,7 +16,7 @@ describe('OAuth URL helpers', () => {
 
   it('only accepts local application redirects', () => {
     expect(safeLoginRedirect('/gateway/routes?serviceId=2')).toBe('/gateway/routes?serviceId=2')
-    expect(safeLoginRedirect('https://example.com')).toBe('/permission/dashboard')
-    expect(safeLoginRedirect('//example.com')).toBe('/permission/dashboard')
+    expect(safeLoginRedirect('https://example.com')).toBe('/systems')
+    expect(safeLoginRedirect('//example.com')).toBe('/systems')
   })
 })

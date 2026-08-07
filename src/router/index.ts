@@ -19,7 +19,8 @@ const router = createRouter({
       path: '/',
       component: () => import('@/layouts/AppLayout.vue'),
       children: [
-        { path: '', redirect: '/permission/dashboard' },
+        { path: '', redirect: '/systems' },
+        { path: 'systems', name: 'systems', component: () => import('@/views/SystemHubView.vue'), meta: { title: '所有系统' } },
         { path: 'permission/dashboard', name: 'permission-dashboard', component: () => import('@permission/views/DashboardView.vue'), meta: { title: '权限概览', module: 'permission', permission: 'dashboard:view' } },
         { path: 'permission/user-groups', name: 'permission-user-groups', component: () => import('@permission/views/UserGroupsView.vue'), meta: { title: '用户组管理', module: 'permission', permission: 'user_group:list' } },
         { path: 'permission/roles', name: 'permission-roles', component: () => import('@permission/views/RolesView.vue'), meta: { title: '角色管理', module: 'permission', permission: 'role:list' } },
@@ -27,7 +28,7 @@ const router = createRouter({
         { path: 'permission/permissions', name: 'permission-permissions', component: () => import('@permission/views/PermissionsView.vue'), meta: { title: '权限管理', module: 'permission', permission: 'permission:list' } },
         { path: 'permission/audit-logs', name: 'permission-audit-logs', component: () => import('@permission/views/AuditLogsView.vue'), meta: { title: '权限审计', module: 'permission', permission: 'audit:list' } },
         { path: 'permission/docs', name: 'permission-docs', component: () => import('@permission/views/DocsView.vue'), meta: { title: 'Permission API 文档', module: 'permission' } },
-        { path: 'profile', name: 'profile', component: () => import('@permission/views/ProfileView.vue'), meta: { title: '个人设置', module: 'permission' } },
+        { path: 'profile', name: 'profile', component: () => import('@permission/views/ProfileView.vue'), meta: { title: '个人设置' } },
         { path: 'gateway/overview', name: 'gateway-overview', component: () => import('@gateway/views/OverviewView.vue'), meta: { title: 'Gateway 概览', module: 'gateway' } },
         { path: 'gateway/services', name: 'gateway-services', component: () => import('@gateway/views/ServicesView.vue'), meta: { title: '服务管理', module: 'gateway' } },
         { path: 'gateway/routes', name: 'gateway-routes', component: () => import('@gateway/views/RoutesView.vue'), meta: { title: '路由管理', module: 'gateway' } },
@@ -43,7 +44,7 @@ router.beforeEach(async (to) => {
   document.title = to.meta.title ? `${to.meta.title} - Admin Center` : 'Admin Center'
   const auth = useAuthStore()
   await auth.hydrate()
-  if (to.meta.public) return auth.authenticated && to.name === 'login' ? '/permission/dashboard' : true
+  if (to.meta.public) return auth.authenticated && to.name === 'login' ? '/systems' : true
   if (!auth.authenticated) return { name: 'login', query: { redirect: to.fullPath } }
   if (to.meta.permission && !auth.can(to.meta.permission)) return { name: 'forbidden' }
   if (to.meta.module === 'gateway' && !auth.can('gateway:manage')) return { name: 'forbidden' }

@@ -23,6 +23,8 @@ ADMIN_UI_OAUTH_REDIRECT_URI=http://admin.example.com:5178/oauth/callback \
 
 统一平台只通过 Permission OAuth 发起一次 People 登录。Gateway 模块使用同一枚平台访问令牌，不会再次跳转登录；独立的 Permission UI 和 Gateway UI 仍保留各自登录入口。
 
+登录完成后首先进入“所有系统”卡片页。进入系统后左侧只展示当前系统的菜单，可通过侧栏的“所有系统”打开系统抽屉并切换到其他系统。
+
 ## 验证
 
 ```bash

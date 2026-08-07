@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  Connection, DataBoard, Document, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
+  Close, Connection, DataBoard, Document, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
   Operation, Setting, SetUp, SwitchButton, UserFilled,
 } from '@element-plus/icons-vue'
 import { avatarUrl, apiMessage } from '@/api/client'
+import { internalSystems } from '@/config/systems'
 import IdentityAvatar from '@permission/components/IdentityAvatar.vue'
 import ThemeSwitcher from '@permission/components/ThemeSwitcher.vue'
 import { useApplicationStore } from '@permission/stores/application'
@@ -19,7 +20,8 @@ const router = useRouter()
 const auth = useAuthStore()
 const applicationStore = useApplicationStore()
 const { audience, setAudience } = useAudience()
-const drawerOpen = ref(false)
+const navigationDrawerOpen = ref(false)
+const systemDrawerOpen = ref(false)
 
 const permissionItems = computed(() => [
   { path: '/permission/dashboard', label: '概览', icon: Grid, permission: 'dashboard:view' },
@@ -41,6 +43,9 @@ const gatewayItems = computed(() => [
 const pageTitle = computed(() => String(route.meta.title || 'Admin Center'))
 const isPermission = computed(() => route.meta.module === 'permission')
 const isGateway = computed(() => route.meta.module === 'gateway')
+const activeSystem = computed(() => internalSystems.find((system) => system.key === route.meta.module) || null)
+const visibleSystems = computed(() => internalSystems.filter((system) => auth.can(system.requiredPermission)))
+const activeItems = computed(() => isPermission.value ? permissionItems.value : isGateway.value ? gatewayItems.value : [])
 const gatewayWorkspace = computed<RouteAudience>({
   get: () => audience.value,
   set: (value) => {
@@ -53,6 +58,22 @@ const audienceOptions = [
   { label: 'Open OpenAPI', value: 'open' },
 ]
 
+function openSystemDrawer() {
+  navigationDrawerOpen.value = false
+  systemDrawerOpen.value = true
+}
+
+async function enterSystem(entry: string) {
+  systemDrawerOpen.value = false
+  await router.push(entry)
+}
+
+async function showAllSystems() {
+  systemDrawerOpen.value = false
+  navigationDrawerOpen.value = false
+  await router.push('/systems')
+}
+
 async function handleCommand(command: string) {
   if (command === 'profile') await router.push('/profile')
   if (command === 'logout') {
@@ -61,40 +82,60 @@ async function handleCommand(command: string) {
   }
 }
 
-onMounted(async () => {
-  if (!auth.can('application:list')) return
+watch(isPermission, async (active) => {
+  if (!active || !auth.can('application:list')) return
   try { await applicationStore.hydrate() }
   catch (error) { ElMessage.error(apiMessage(error, '应用列表加载失败')) }
-})
+}, { immediate: true })
 </script>
 
 <template>
   <div class="app-shell">
-    <aside class="sidebar desktop-sidebar">
-      <div class="brand"><span class="brand-mark"><el-icon><Grid /></el-icon></span><span><strong>Admin Center</strong><small>Internal Console</small></span></div>
+    <aside v-if="activeSystem" class="sidebar desktop-sidebar">
+      <div class="brand">
+        <span class="brand-mark"><el-icon><component :is="activeSystem.icon" /></el-icon></span>
+        <span><strong>{{ activeSystem.label }}</strong><small>Admin Center</small></span>
+      </div>
       <el-menu :default-active="route.path" router class="side-menu">
-        <el-menu-item-group title="PERMISSION">
-          <el-menu-item v-for="item in permissionItems" :key="item.path" :index="item.path"><el-icon><component :is="item.icon" /></el-icon><span>{{ item.label }}</span></el-menu-item>
-        </el-menu-item-group>
-        <el-menu-item-group v-if="auth.can('gateway:manage')" title="GATEWAY">
-          <el-menu-item v-for="item in gatewayItems" :key="item.path" :index="item.path"><el-icon><component :is="item.icon" /></el-icon><span>{{ item.label }}</span></el-menu-item>
-        </el-menu-item-group>
+        <el-menu-item v-for="item in activeItems" :key="item.path" :index="item.path"><el-icon><component :is="item.icon" /></el-icon><span>{{ item.label }}</span></el-menu-item>
       </el-menu>
+      <button class="all-systems-trigger" type="button" @click="openSystemDrawer"><el-icon><Grid /></el-icon><span>所有系统</span></button>
       <div class="sidebar-foot">People SSO</div>
     </aside>
 
-    <el-drawer v-model="drawerOpen" direction="ltr" :with-header="false" size="260px">
-      <aside class="sidebar drawer-sidebar">
-        <div class="brand"><span class="brand-mark"><el-icon><Grid /></el-icon></span><span><strong>Admin Center</strong><small>Internal Console</small></span></div>
-        <el-menu :default-active="route.path" router class="side-menu" @select="drawerOpen = false">
-          <el-menu-item v-for="item in [...permissionItems, ...(auth.can('gateway:manage') ? gatewayItems : [])]" :key="item.path" :index="item.path"><el-icon><component :is="item.icon" /></el-icon><span>{{ item.label }}</span></el-menu-item>
+    <el-drawer v-model="navigationDrawerOpen" direction="ltr" :with-header="false" size="260px">
+      <aside v-if="activeSystem" class="sidebar drawer-sidebar">
+        <div class="brand">
+          <span class="brand-mark"><el-icon><component :is="activeSystem.icon" /></el-icon></span>
+          <span><strong>{{ activeSystem.label }}</strong><small>Admin Center</small></span>
+        </div>
+        <el-menu :default-active="route.path" router class="side-menu" @select="navigationDrawerOpen = false">
+          <el-menu-item v-for="item in activeItems" :key="item.path" :index="item.path"><el-icon><component :is="item.icon" /></el-icon><span>{{ item.label }}</span></el-menu-item>
         </el-menu>
+        <button class="all-systems-trigger" type="button" @click="openSystemDrawer"><el-icon><Grid /></el-icon><span>所有系统</span></button>
       </aside>
     </el-drawer>
 
-    <div class="workspace">
+    <el-drawer v-model="systemDrawerOpen" direction="ltr" :with-header="false" size="min(380px, 92vw)">
+      <div class="system-drawer-panel">
+        <header><div><small>ADMIN CENTER</small><h2>切换系统</h2></div><el-button text :icon="Close" aria-label="关闭系统抽屉" @click="systemDrawerOpen = false" /></header>
+        <button class="system-drawer-all" type="button" @click="showAllSystems"><el-icon><Grid /></el-icon><span>所有系统</span></button>
+        <div class="system-drawer-list">
+          <button v-for="system in visibleSystems" :key="system.key" class="system-drawer-item" :class="{ 'is-active': activeSystem?.key === system.key }" type="button" @click="enterSystem(system.entry)">
+            <span class="system-drawer-icon" :class="`system-${system.key}`"><el-icon><component :is="system.icon" /></el-icon></span>
+            <span><strong>{{ system.label }}</strong><small>{{ system.description }}</small></span>
+          </button>
+        </div>
+      </div>
+    </el-drawer>
+
+    <div class="workspace" :class="{ 'without-sidebar': !activeSystem }">
       <header class="topbar">
-        <div class="topbar-title"><el-button class="mobile-menu-button" text :icon="Expand" aria-label="打开导航" @click="drawerOpen = true" /><h1>{{ pageTitle }}</h1></div>
+        <div class="topbar-title">
+          <el-button v-if="activeSystem" class="mobile-menu-button" text :icon="Expand" aria-label="打开系统导航" @click="navigationDrawerOpen = true" />
+          <el-button v-else-if="route.name !== 'systems'" text :icon="Grid" aria-label="返回所有系统" @click="showAllSystems" />
+          <h1>{{ pageTitle }}</h1>
+        </div>
         <div class="topbar-actions">
           <div v-if="isPermission && auth.can('application:list')" class="global-app-switcher">
             <el-icon><Connection /></el-icon>

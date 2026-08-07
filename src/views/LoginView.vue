@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowRight, Grid } from '@element-plus/icons-vue'
 import { authApi } from '@permission/api'
 import { apiMessage } from '@/api/client'
 import ThemeSwitcher from '@permission/components/ThemeSwitcher.vue'
-import { oauthRedirectUri, peopleAuthorizationUrl, safeLoginRedirect } from '@/utils/oauth'
+import { oauthRedirectUri, peopleAuthorizationUrl } from '@/utils/oauth'
 
-const route = useRoute()
 const loading = ref(false)
 async function login() {
   loading.value = true
   try {
-    sessionStorage.setItem('admin_ui_login_redirect', safeLoginRedirect(route.query.redirect))
+    sessionStorage.setItem('admin_ui_login_redirect', '/systems')
     const redirectUri = oauthRedirectUri(import.meta.env.VITE_OAUTH_REDIRECT_URI, window.location.origin)
     const result = await authApi.oauthStart(redirectUri)
     window.location.assign(peopleAuthorizationUrl(result.authorizationUrl, import.meta.env.VITE_PEOPLE_LOGIN_ORIGIN))
