@@ -198,6 +198,7 @@ async function saveAdministrators() {
 		await applicationApi.updateSystemAdministrators(administratorApplication.value.id, {
 		  userIds: administratorIds.value,
 		  groupIds: [],
+		  departmentIds: [],
     })
     ElMessage.success('系统管理员已更新')
     administratorOpen.value = false

@@ -2,12 +2,13 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElTree, type FormInstance, type FormRules } from 'element-plus'
 import { Delete, Edit, Plus, Refresh } from '@element-plus/icons-vue'
-import { applicationApi, permissionApi, roleApi, userApi, userGroupApi } from '@permission/api'
+import { applicationApi, departmentApi, permissionApi, roleApi, userApi, userGroupApi } from '@permission/api'
 import { apiMessage, avatarUrl } from '@/api/client'
 import { useApplicationStore } from '@permission/stores/application'
 import { useAuthStore } from '@/stores/auth'
 import IdentityAvatar from '@permission/components/IdentityAvatar.vue'
-import type { Permission, PermissionPrincipalGrant, Role, RolePayload, Status, UserGroup } from '@permission/types'
+import { buildDepartmentTree } from '@permission/utils/departments'
+import type { Department, Permission, PermissionPrincipalGrant, Role, RolePayload, Status, UserGroup } from '@permission/types'
 
 const auth = useAuthStore()
 const applicationStore = useApplicationStore()
@@ -24,7 +25,8 @@ const principalSearching = ref(false)
 const principalsLoaded = ref(false)
 const userOptions = ref<PermissionPrincipalGrant[]>([])
 const groupOptions = ref<UserGroup[]>([])
-const principalForm = reactive({ userIds: [] as number[], groupIds: [] as number[] })
+const departmentOptions = ref<Department[]>([])
+const principalForm = reactive({ userIds: [] as number[], groupIds: [] as number[], departmentIds: [] as string[] })
 const formRef = ref<FormInstance>()
 const treeRef = ref<InstanceType<typeof ElTree>>()
 const form = reactive<RolePayload>({ applicationId: 0, code: '', name: '', description: '', status: 'enabled', permissionIds: [] })
@@ -36,11 +38,17 @@ const treeProps = {
   label: 'name', children: 'children',
   disabled: (node: unknown) => (node as Permission).nodeType === 'group' || editingRole.value?.builtIn || !auth.can('role:assign'),
 }
+const departmentTreeProps = {
+  label: 'name', children: 'children',
+  disabled: (node: Department) => node.status !== 'enabled',
+}
 const managementRole = computed(() => Boolean(editingRole.value?.builtIn && ['system_admin', 'super_admin'].includes(editingRole.value.code)))
 const systemAdministratorRole = computed(() => Boolean(editingRole.value?.builtIn && editingRole.value.code === 'system_admin'))
 const canEditPrincipals = computed(() => auth.can('role:update') && (managementRole.value ? auth.can('application:update') : auth.can('user:assign')))
 const canEditGroups = computed(() => auth.can('role:update') && auth.can('user_group:assign') && !managementRole.value)
+const canEditDepartments = computed(() => auth.can('role:update') && auth.can('user:assign') && !managementRole.value)
 const selectedPrincipals = computed(() => userOptions.value.filter((item) => principalForm.userIds.includes(item.id)))
+const departmentTree = computed(() => buildDepartmentTree(departmentOptions.value))
 
 function isManagementRole(role: Role) { return role.builtIn && ['system_admin', 'super_admin'].includes(role.code) }
 
@@ -63,9 +71,10 @@ function resetForm() {
   formRef.value?.clearValidate()
 }
 function resetPrincipals() {
-  Object.assign(principalForm, { userIds: [], groupIds: [] })
+  Object.assign(principalForm, { userIds: [], groupIds: [], departmentIds: [] })
   userOptions.value = []
 	groupOptions.value = []
+  departmentOptions.value = []
   principalsLoaded.value = false
 }
 function mergePrincipalOptions(current: PermissionPrincipalGrant[], incoming: PermissionPrincipalGrant[]) {
@@ -92,6 +101,9 @@ async function primePrincipalOptions() {
 	await searchGlobalUsers('')
 	if (auth.can('user_group:list') && !managementRole.value) {
 	  groupOptions.value = await userGroupApi.list(applicationStore.currentApplicationId)
+	}
+	if (auth.can('user:list') && !managementRole.value) {
+	  departmentOptions.value = await departmentApi.list()
 	}
 }
 function principalAvatarUrl(principal: PermissionPrincipalGrant) {
@@ -122,8 +134,9 @@ async function openEdit(role: Role) {
   principalsLoading.value = true
   try {
     const result = await roleApi.principals(role.id)
-    Object.assign(principalForm, { userIds: result.userIds, groupIds: result.groupIds })
+    Object.assign(principalForm, { userIds: result.userIds, groupIds: result.groupIds, departmentIds: result.departmentIds })
     userOptions.value = result.users
+	departmentOptions.value = result.departments
     principalsLoaded.value = true
     await primePrincipalOptions()
   } catch (error) { ElMessage.error(apiMessage(error)) }
@@ -136,10 +149,10 @@ async function save() {
   try {
 	if (editingRole.value?.builtIn) {
 	  if (!editingId.value || !canEditPrincipals.value || !principalsLoaded.value) return
-		  await roleApi.updatePrincipals(editingId.value, { userIds: principalForm.userIds, groupIds: [] })
+		  await roleApi.updatePrincipals(editingId.value, { userIds: principalForm.userIds, groupIds: [], departmentIds: [] })
 	} else {
 	  const saved = editingId.value ? await roleApi.update(editingId.value, { ...form }) : await roleApi.create({ ...form })
-		  if ((canEditPrincipals.value || canEditGroups.value) && principalsLoaded.value) await roleApi.updatePrincipals(saved.id, { userIds: principalForm.userIds, groupIds: principalForm.groupIds })
+		  if ((canEditPrincipals.value || canEditGroups.value || canEditDepartments.value) && principalsLoaded.value) await roleApi.updatePrincipals(saved.id, { userIds: principalForm.userIds, groupIds: principalForm.groupIds, departmentIds: principalForm.departmentIds })
 	}
 	ElMessage.success(editingRole.value?.builtIn ? '管理主体已更新' : editingId.value ? '角色已更新' : '角色已创建')
     dialogOpen.value = false
@@ -194,6 +207,7 @@ watch(() => applicationStore.currentApplicationId, () => { dialogOpen.value = fa
 			<div v-loading="principalsLoading" class="role-principal-editor">
 				  <el-form-item label="关联 People 用户"><el-select v-model="principalForm.userIds" multiple filterable remote reserve-keyword :remote-method="searchGlobalUsers" :loading="principalSearching" :disabled="!canEditPrincipals" class="full-width" placeholder="输入用户名、姓名、邮箱或电话搜索"><el-option v-for="user in userOptions" :key="user.id" class="identity-select-option" :label="`${user.displayName || user.identifier} (${user.identifier})`" :value="user.id"><div class="select-user-option"><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :src="principalAvatarUrl(user)" :size="28" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><small>{{ user.identifier }}</small></span></div></el-option></el-select></el-form-item>
 			  <el-form-item v-if="!managementRole" label="关联用户组"><el-select v-model="principalForm.groupIds" multiple filterable class="full-width" placeholder="选择当前应用用户组" :disabled="!canEditGroups"><el-option v-for="group in groupOptions" :key="group.id" :label="`${group.name} (${group.code})`" :value="group.id" /></el-select></el-form-item>
+			  <el-form-item v-if="!managementRole" label="关联 People 部门"><el-tree-select v-model="principalForm.departmentIds" :data="departmentTree" node-key="id" :props="departmentTreeProps" multiple check-strictly filterable collapse-tags collapse-tags-tooltip class="full-width" placeholder="选择部门，授权自动覆盖全部下级部门" :disabled="!canEditDepartments" /></el-form-item>
 				  <div class="associated-principal-list"><el-empty v-if="!selectedPrincipals.length" description="暂无关联主体" :image-size="56" /><template v-else><div v-for="principal in selectedPrincipals" :key="principal.id" class="associated-principal"><IdentityAvatar :name="principal.displayName" :identifier="principal.identifier" :src="principalAvatarUrl(principal)" :size="34" :email="principal.email" :phone="principal.phone" :status="principal.status" /><span><strong>{{ principal.displayName || principal.identifier }}</strong><small>{{ principal.identifier }}</small></span><el-tag :type="principal.status === 'enabled' ? 'success' : 'info'" effect="plain" size="small">{{ principal.status === 'enabled' ? '启用' : '禁用' }}</el-tag></div></template></div>
 			</div>
 		  </el-tab-pane>

@@ -1,6 +1,6 @@
 import { api, unwrap } from '@/api/client'
 import type {
-  AdministratorIdentity, Application, ApplicationAdministrators, ApplicationPayload, ApplicationSecret, AuditLog, DashboardData, Page, Permission, PermissionGrantPayload, PermissionGrants, PermissionPayload, PermissionPrincipalGrant,
+  AdministratorIdentity, Application, ApplicationAdministrators, ApplicationPayload, ApplicationSecret, AuditLog, DashboardData, Department, Page, Permission, PermissionGrantPayload, PermissionGrants, PermissionPayload, PermissionPrincipalGrant,
   Role, RolePayload, RolePrincipalPayload, RolePrincipals, Session, TokenResponse, User, UserGroup, UserGroupPayload,
 } from '@permission/types'
 
@@ -20,6 +20,10 @@ export const dashboardApi = {
 
 export const userApi = {
   list: (params: { page: number; pageSize: number; search?: string; status?: string; applicationId?: number; assignedOnly?: boolean }) => unwrap<Page<User>>(api.get('/users', { params })),
+}
+
+export const departmentApi = {
+  list: () => unwrap<Department[]>(api.get('/departments')),
 }
 
 export const roleApi = {

@@ -76,6 +76,19 @@ export interface UserGroup {
   updatedAt: string
 }
 
+export interface Department {
+  id: string
+  parentId: string
+  code: string
+  name: string
+  description: string
+  status: Status
+  employeeCount: number
+  createdAt: string
+  updatedAt: string
+  children?: Department[]
+}
+
 export interface UserGroupPayload {
   applicationId: number
   code: string
@@ -223,26 +236,32 @@ export interface PermissionGrants {
   roleIds: number[]
   userIds: number[]
 	groupIds: number[]
+  departmentIds: string[]
   roles: Role[]
   users: PermissionPrincipalGrant[]
 	groups: UserGroup[]
+  departments: Department[]
 }
 
 export interface PermissionGrantPayload {
   roleIds: number[]
   userIds: number[]
 	groupIds: number[]
+  departmentIds: string[]
 }
 
 export interface RolePrincipals {
   role: Role
   userIds: number[]
 	groupIds: number[]
+  departmentIds: string[]
   users: PermissionPrincipalGrant[]
 	groups: UserGroup[]
+  departments: Department[]
 }
 
 export interface RolePrincipalPayload {
   userIds: number[]
 	groupIds: number[]
+  departmentIds: string[]
 }
