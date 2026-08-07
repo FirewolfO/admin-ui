@@ -6,7 +6,7 @@ import {
   Close, Connection, DataBoard, Document, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
   Operation, Setting, SetUp, SwitchButton, UserFilled,
 } from '@element-plus/icons-vue'
-import { avatarUrl, apiMessage } from '@/api/client'
+import { apiMessage } from '@/api/client'
 import { internalSystems } from '@/config/systems'
 import IdentityAvatar from '@permission/components/IdentityAvatar.vue'
 import ThemeSwitcher from '@permission/components/ThemeSwitcher.vue'
@@ -144,7 +144,7 @@ watch(isPermission, async (active) => {
           <el-segmented v-if="isGateway" v-model="gatewayWorkspace" :options="audienceOptions" class="audience-switch" aria-label="接口类型" />
           <ThemeSwitcher />
           <el-dropdown trigger="click" @command="handleCommand">
-            <button class="account-trigger"><IdentityAvatar :name="auth.user?.displayName" :identifier="auth.user?.username" :src="avatarUrl(auth.user)" :size="32" :email="auth.user?.email" :phone="auth.user?.phone" :status="auth.user?.status" /><span class="account-copy"><strong>{{ auth.user?.displayName }}</strong><small>{{ auth.user?.username }}</small></span><el-icon><Setting /></el-icon></button>
+            <button class="account-trigger"><IdentityAvatar :name="auth.user?.displayName" :identifier="auth.user?.username" :size="32" :email="auth.user?.email" :phone="auth.user?.phone" :status="auth.user?.status" /><span class="account-copy"><strong>{{ auth.user?.displayName }}</strong><small>{{ auth.user?.username }}</small></span><el-icon><Setting /></el-icon></button>
             <template #dropdown><el-dropdown-menu><el-dropdown-item command="profile" :icon="Setting">个人设置</el-dropdown-item><el-dropdown-item command="logout" :icon="SwitchButton" divided>退出登录</el-dropdown-item></el-dropdown-menu></template>
           </el-dropdown>
         </div>

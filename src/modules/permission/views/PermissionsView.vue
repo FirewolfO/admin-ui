@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Delete, Edit, FolderAdd, Plus, Refresh, Search, UserFilled } from '@element-plus/icons-vue'
 import { departmentApi, permissionApi, roleApi, userApi, userGroupApi } from '@permission/api'
-import { apiMessage, avatarUrl } from '@/api/client'
+import { apiMessage } from '@/api/client'
 import { useApplicationStore } from '@permission/stores/application'
 import { useAuthStore } from '@/stores/auth'
 import IdentityAvatar from '@permission/components/IdentityAvatar.vue'
@@ -30,7 +30,7 @@ const grantGroups = ref<UserGroup[]>([])
 const departmentOptions = ref<Department[]>([])
 const userOptions = ref<PermissionPrincipalGrant[]>([])
 const principalSearching = ref(false)
-const grantForm = reactive({ roleIds: [] as number[], userIds: [] as number[], groupIds: [] as number[], departmentIds: [] as string[] })
+const grantForm = reactive({ roleIds: [] as number[], userIds: [] as string[], groupIds: [] as number[], departmentIds: [] as string[] })
 const canEditRoleGrants = computed(() => auth.can('permission:update') && auth.can('role:assign') && auth.can('role:list'))
 const canEditUserGrants = computed(() => auth.can('permission:update') && auth.can('user:assign'))
 const canEditGroupGrants = computed(() => auth.can('permission:update') && auth.can('user_group:assign'))
@@ -120,7 +120,7 @@ async function searchGlobalUsers(keyword: string) {
   principalSearching.value = true
   try {
     const result = await userApi.list({ page: 1, pageSize: 50, search: keyword || undefined, applicationId: applicationStore.currentApplicationId })
-    const options = result.items.map((user) => ({ id: user.id, identifier: user.username, displayName: user.displayName, email: user.email, phone: user.phone, status: user.status, avatarUpdatedAt: user.avatarUpdatedAt, sources: [] }))
+    const options = result.items.map((user) => ({ id: user.id, identifier: user.username, displayName: user.displayName, email: user.email, phone: user.phone, status: user.status, sources: [] }))
     userOptions.value = mergePrincipalOptions(userOptions.value.filter((item) => grantForm.userIds.includes(item.id)), options)
   } catch (error) { ElMessage.error(apiMessage(error)) }
   finally { principalSearching.value = false }
@@ -155,11 +155,6 @@ async function saveGrants() {
   } catch (error) { ElMessage.error(apiMessage(error)) }
   finally { grantSaving.value = false }
 }
-function principalAvatarUrl(principal: PermissionPrincipalGrant) {
-  const identity = { id: principal.id, avatarUpdatedAt: principal.avatarUpdatedAt }
-  return avatarUrl(identity)
-}
-
 onMounted(async () => {
   try { await applicationStore.hydrate() }
   catch (error) { ElMessage.error(apiMessage(error)) }
@@ -202,13 +197,13 @@ watch(() => applicationStore.currentApplicationId, () => { dialogOpen.value = fa
 		  <el-form-item label="授权角色"><el-select v-model="grantForm.roleIds" multiple filterable clearable class="full-width" placeholder="选择当前应用角色" :disabled="!canEditRoleGrants"><el-option v-for="role in grantRoles" :key="role.id" :label="`${role.name} (${role.code})`" :value="role.id" :disabled="role.code === 'system_admin'" /></el-select></el-form-item>
 		  <el-form-item label="授权用户组"><el-select v-model="grantForm.groupIds" multiple filterable clearable class="full-width" placeholder="选择当前应用用户组" :disabled="!canEditGroupGrants"><el-option v-for="group in grantGroups" :key="group.id" :label="`${group.name} (${group.code})`" :value="group.id" /></el-select></el-form-item>
 		  <el-form-item label="直接授权 People 部门"><el-tree-select v-model="grantForm.departmentIds" :data="departmentTree" node-key="id" :props="departmentTreeProps" multiple check-strictly filterable collapse-tags collapse-tags-tooltip class="full-width" placeholder="选择部门，授权自动覆盖全部下级部门" :disabled="!canEditDepartmentGrants" /></el-form-item>
-			  <el-form-item label="直接授权 People 用户"><el-select v-model="grantForm.userIds" multiple filterable remote reserve-keyword :remote-method="searchGlobalUsers" :loading="principalSearching" class="full-width" placeholder="输入用户名、姓名、邮箱或电话搜索" :disabled="!canEditUserGrants"><el-option v-for="user in userOptions" :key="user.id" class="identity-select-option" :label="`${user.displayName || user.identifier} (${user.identifier})`" :value="user.id"><div class="select-user-option"><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :src="principalAvatarUrl(user)" :size="28" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><small>{{ user.identifier }}</small></span></div></el-option></el-select></el-form-item>
+			  <el-form-item label="直接授权 People 用户"><el-select v-model="grantForm.userIds" multiple filterable remote reserve-keyword :remote-method="searchGlobalUsers" :loading="principalSearching" class="full-width" placeholder="输入用户名、姓名、邮箱或电话搜索" :disabled="!canEditUserGrants"><el-option v-for="user in userOptions" :key="user.id" class="identity-select-option" :label="`${user.displayName || user.identifier} (${user.identifier})`" :value="user.id"><div class="select-user-option"><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :size="28" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><small>{{ user.identifier }}</small></span></div></el-option></el-select></el-form-item>
 		</el-form>
 		<div class="grant-summary"><h4>已获得此权限的主体</h4><el-tabs>
 		  <el-tab-pane :label="`角色 ${grants?.roles.length || 0}`"><el-empty v-if="!grants?.roles.length" description="暂无角色" :image-size="56" /><div v-else class="grant-list"><div v-for="role in grants?.roles || []" :key="role.id"><span><strong>{{ role.name }}</strong><code>{{ role.code }}</code></span><el-tag effect="plain">角色授权</el-tag></div></div></el-tab-pane>
 		  <el-tab-pane :label="`用户组 ${grants?.groups.length || 0}`"><el-empty v-if="!grants?.groups.length" description="暂无用户组" :image-size="56" /><div v-else class="grant-list"><div v-for="group in grants?.groups || []" :key="group.id"><span><strong>{{ group.name }}</strong><code>{{ group.code }}</code></span><el-tag effect="plain">用户组授权</el-tag></div></div></el-tab-pane>
 		  <el-tab-pane :label="`People 部门 ${grants?.departments.length || 0}`"><el-empty v-if="!grants?.departments.length" description="暂无部门" :image-size="56" /><div v-else class="grant-list"><div v-for="department in grants?.departments || []" :key="department.id"><span><strong>{{ department.name }}</strong><code>{{ department.code }}</code></span><el-tag effect="plain">含下级部门</el-tag></div></div></el-tab-pane>
-			  <el-tab-pane :label="`People 用户 ${grants?.users.length || 0}`"><el-empty v-if="!grants?.users.length" description="暂无用户" :image-size="56" /><div v-else class="grant-list"><div v-for="user in grants?.users || []" :key="user.id"><span><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :src="principalAvatarUrl(user)" :size="32" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><code>{{ user.identifier }}</code></span></span><span><el-tag v-for="source in user.sources" :key="source" effect="plain" class="inline-tag">{{ source }}</el-tag></span></div></div></el-tab-pane>
+			  <el-tab-pane :label="`People 用户 ${grants?.users.length || 0}`"><el-empty v-if="!grants?.users.length" description="暂无用户" :image-size="56" /><div v-else class="grant-list"><div v-for="user in grants?.users || []" :key="user.id"><span><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :size="32" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><code>{{ user.identifier }}</code></span></span><span><el-tag v-for="source in user.sources" :key="source" effect="plain" class="inline-tag">{{ source }}</el-tag></span></div></div></el-tab-pane>
 		</el-tabs></div>
 	  </div>
 	  <template #footer><el-button @click="grantOpen = false">关闭</el-button><el-button v-if="canSaveGrants" type="primary" :loading="grantSaving" @click="saveGrants">保存授权</el-button></template>

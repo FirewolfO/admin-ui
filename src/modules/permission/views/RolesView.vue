@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElTree, type FormInstance, type FormRules } from 'element-plus'
 import { Delete, Edit, Plus, Refresh } from '@element-plus/icons-vue'
 import { applicationApi, departmentApi, permissionApi, roleApi, userApi, userGroupApi } from '@permission/api'
-import { apiMessage, avatarUrl } from '@/api/client'
+import { apiMessage } from '@/api/client'
 import { useApplicationStore } from '@permission/stores/application'
 import { useAuthStore } from '@/stores/auth'
 import IdentityAvatar from '@permission/components/IdentityAvatar.vue'
@@ -26,7 +26,7 @@ const principalsLoaded = ref(false)
 const userOptions = ref<PermissionPrincipalGrant[]>([])
 const groupOptions = ref<UserGroup[]>([])
 const departmentOptions = ref<Department[]>([])
-const principalForm = reactive({ userIds: [] as number[], groupIds: [] as number[], departmentIds: [] as string[] })
+const principalForm = reactive({ userIds: [] as string[], groupIds: [] as number[], departmentIds: [] as string[] })
 const formRef = ref<FormInstance>()
 const treeRef = ref<InstanceType<typeof ElTree>>()
 const form = reactive<RolePayload>({ applicationId: 0, code: '', name: '', description: '', status: 'enabled', permissionIds: [] })
@@ -92,7 +92,7 @@ async function searchGlobalUsers(keyword: string) {
 	  : await userApi.list({ page: 1, pageSize: 50, search: keyword || undefined, applicationId: applicationStore.currentApplicationId })
     const incoming = result.items.map((user) => ('identifier' in user
       ? user
-      : { id: user.id, identifier: user.username, displayName: user.displayName, email: user.email, phone: user.phone, status: user.status, avatarUpdatedAt: user.avatarUpdatedAt, sources: [] }))
+      : { id: user.id, identifier: user.username, displayName: user.displayName, email: user.email, phone: user.phone, status: user.status, sources: [] }))
     userOptions.value = mergePrincipalOptions(userOptions.value.filter((item) => principalForm.userIds.includes(item.id)), incoming)
   } catch (error) { ElMessage.error(apiMessage(error)) }
   finally { principalSearching.value = false }
@@ -105,10 +105,6 @@ async function primePrincipalOptions() {
 	if (auth.can('user:list') && !managementRole.value) {
 	  departmentOptions.value = await departmentApi.list()
 	}
-}
-function principalAvatarUrl(principal: PermissionPrincipalGrant) {
-  const identity = { id: principal.id, avatarUpdatedAt: principal.avatarUpdatedAt }
-  return avatarUrl(identity)
 }
 async function showDialog(checkedKeys: number[]) {
   activeTab.value = editingRole.value?.builtIn ? 'principals' : 'basic'
@@ -205,10 +201,10 @@ watch(() => applicationStore.currentApplicationId, () => { dialogOpen.value = fa
 		  </el-tab-pane>
 		  <el-tab-pane label="关联主体" name="principals">
 			<div v-loading="principalsLoading" class="role-principal-editor">
-				  <el-form-item label="关联 People 用户"><el-select v-model="principalForm.userIds" multiple filterable remote reserve-keyword :remote-method="searchGlobalUsers" :loading="principalSearching" :disabled="!canEditPrincipals" class="full-width" placeholder="输入用户名、姓名、邮箱或电话搜索"><el-option v-for="user in userOptions" :key="user.id" class="identity-select-option" :label="`${user.displayName || user.identifier} (${user.identifier})`" :value="user.id"><div class="select-user-option"><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :src="principalAvatarUrl(user)" :size="28" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><small>{{ user.identifier }}</small></span></div></el-option></el-select></el-form-item>
+				  <el-form-item label="关联 People 用户"><el-select v-model="principalForm.userIds" multiple filterable remote reserve-keyword :remote-method="searchGlobalUsers" :loading="principalSearching" :disabled="!canEditPrincipals" class="full-width" placeholder="输入用户名、姓名、邮箱或电话搜索"><el-option v-for="user in userOptions" :key="user.id" class="identity-select-option" :label="`${user.displayName || user.identifier} (${user.identifier})`" :value="user.id"><div class="select-user-option"><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :size="28" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><small>{{ user.identifier }}</small></span></div></el-option></el-select></el-form-item>
 			  <el-form-item v-if="!managementRole" label="关联用户组"><el-select v-model="principalForm.groupIds" multiple filterable class="full-width" placeholder="选择当前应用用户组" :disabled="!canEditGroups"><el-option v-for="group in groupOptions" :key="group.id" :label="`${group.name} (${group.code})`" :value="group.id" /></el-select></el-form-item>
 			  <el-form-item v-if="!managementRole" label="关联 People 部门"><el-tree-select v-model="principalForm.departmentIds" :data="departmentTree" node-key="id" :props="departmentTreeProps" multiple check-strictly filterable collapse-tags collapse-tags-tooltip class="full-width" placeholder="选择部门，授权自动覆盖全部下级部门" :disabled="!canEditDepartments" /></el-form-item>
-				  <div class="associated-principal-list"><el-empty v-if="!selectedPrincipals.length" description="暂无关联主体" :image-size="56" /><template v-else><div v-for="principal in selectedPrincipals" :key="principal.id" class="associated-principal"><IdentityAvatar :name="principal.displayName" :identifier="principal.identifier" :src="principalAvatarUrl(principal)" :size="34" :email="principal.email" :phone="principal.phone" :status="principal.status" /><span><strong>{{ principal.displayName || principal.identifier }}</strong><small>{{ principal.identifier }}</small></span><el-tag :type="principal.status === 'enabled' ? 'success' : 'info'" effect="plain" size="small">{{ principal.status === 'enabled' ? '启用' : '禁用' }}</el-tag></div></template></div>
+				  <div class="associated-principal-list"><el-empty v-if="!selectedPrincipals.length" description="暂无关联主体" :image-size="56" /><template v-else><div v-for="principal in selectedPrincipals" :key="principal.id" class="associated-principal"><IdentityAvatar :name="principal.displayName" :identifier="principal.identifier" :size="34" :email="principal.email" :phone="principal.phone" :status="principal.status" /><span><strong>{{ principal.displayName || principal.identifier }}</strong><small>{{ principal.identifier }}</small></span><el-tag :type="principal.status === 'enabled' ? 'success' : 'info'" effect="plain" size="small">{{ principal.status === 'enabled' ? '启用' : '禁用' }}</el-tag></div></template></div>
 			</div>
 		  </el-tab-pane>
 		</el-tabs>

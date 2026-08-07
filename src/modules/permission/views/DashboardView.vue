@@ -12,7 +12,7 @@ const applicationStore = useApplicationStore()
 const data = ref<DashboardData>({ users: 0, enabledUsers: 0, roles: 0, permissions: 0, applications: 0, recentAuditLogs: [] })
 
 const metrics = [
-  { key: 'users' as const, label: '用户总数', icon: User, tone: 'green' },
+  { key: 'users' as const, label: 'People 用户', icon: User, tone: 'green' },
   { key: 'enabledUsers' as const, label: '启用用户', icon: UserFilled, tone: 'teal' },
   { key: 'roles' as const, label: '角色数量', icon: Operation, tone: 'amber' },
   { key: 'permissions' as const, label: '权限数量', icon: Key, tone: 'coral' },

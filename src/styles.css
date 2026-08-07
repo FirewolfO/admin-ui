@@ -188,11 +188,6 @@ h1, h2, h3, p { margin: 0; }
 .metric-card div > span { margin-top: 6px; color: #718079; font-size: 13px; }
 .data-section { padding: 20px; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 6px; }
 .profile-section { padding: 24px; }
-.password-form { max-width: 480px; }
-.profile-editor { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 28px; }
-.avatar-editor { display: flex; align-items: center; flex-direction: column; gap: 12px; padding-top: 4px; }
-.avatar-actions { display: flex; gap: 8px; }
-.inline-avatar-editor { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
 .identity-avatar { flex: 0 0 auto; color: white; font-weight: 650; letter-spacing: 0; cursor: default; }
 .identity-avatar span { color: white; line-height: 1; }
 .user-identity-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -395,7 +390,6 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
 	.form-grid-three { grid-template-columns: 1fr; }
 	.heading-actions { width: 100%; }
 	.heading-actions .el-button { flex: 1; margin-left: 0; }
-	.profile-editor { grid-template-columns: 1fr; gap: 20px; }
   .permission-group > div { grid-template-columns: 1fr; }
   .pagination-row { justify-content: flex-start; }
   .login-page { display: block; min-height: 100vh; padding: 20px; background: var(--theme-page-bg); }

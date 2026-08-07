@@ -33,7 +33,7 @@ const treeProps = {
   disabled: (node: unknown) => !canAssign.value || (node as Permission).nodeType === 'group',
 }
 
-function mergeByID<T extends { id: number }>(current: T[], incoming: T[]) {
+function mergeByID<T extends { id: string | number }>(current: T[], incoming: T[]) {
   const values = new Map(current.map((item) => [item.id, item]))
   incoming.forEach((item) => values.set(item.id, item))
   return [...values.values()]

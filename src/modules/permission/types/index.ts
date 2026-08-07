@@ -24,7 +24,7 @@ export interface ApplicationSecret {
 	current: boolean
 	expiresAt: string | null
 	revokedAt: string | null
-	createdById: number | null
+	createdById: string | null
 	createdByName: string
 	createdAt: string
 }
@@ -95,24 +95,23 @@ export interface UserGroupPayload {
   name: string
   description: string
   status: Status
-  userIds: number[]
+  userIds: string[]
   roleIds: number[]
   permissionIds: number[]
 }
 
 export interface User {
-  id: number
+  id: string
+  employeeNo: string
   username: string
   displayName: string
   email: string
   phone: string
-  bio: string
-  avatarUpdatedAt: string | null
+  departmentId: string
+  department: string
+  title: string
+  role: string
   status: Status
-  roles?: Role[]
-  permissions?: Permission[]
-  lockedUntil?: string | null
-  passwordChangedAt: string | null
   lastLoginAt: string | null
   createdAt: string
   updatedAt: string
@@ -120,7 +119,7 @@ export interface User {
 
 export interface AuditLog {
   id: number
-  actorId: number | null
+  actorId: string | null
   actorName: string
   applicationId: number | null
   action: string
@@ -196,18 +195,17 @@ export interface ApplicationPayload {
 
 export interface ApplicationAdministrators {
   application: Application
-  userIds: number[]
+  userIds: string[]
   users: AdministratorIdentity[]
 }
 
 export interface AdministratorIdentity {
-  id: number
+  id: string
   username: string
   displayName: string
   email: string
   phone: string
   status: Status
-  avatarUpdatedAt: string | null
 }
 
 export interface EffectivePermission {
@@ -216,25 +214,19 @@ export interface EffectivePermission {
 }
 
 export interface PermissionPrincipalGrant {
-  id: number
+  id: string
   identifier: string
   displayName: string
   email: string
   phone: string
   status: Status
-  avatarUpdatedAt: string | null
   sources: string[]
-}
-
-export interface AvatarPayload {
-  contentType: string
-  data: string
 }
 
 export interface PermissionGrants {
   permission: Permission
   roleIds: number[]
-  userIds: number[]
+	userIds: string[]
 	groupIds: number[]
   departmentIds: string[]
   roles: Role[]
@@ -245,14 +237,14 @@ export interface PermissionGrants {
 
 export interface PermissionGrantPayload {
   roleIds: number[]
-  userIds: number[]
+	userIds: string[]
 	groupIds: number[]
   departmentIds: string[]
 }
 
 export interface RolePrincipals {
   role: Role
-  userIds: number[]
+	userIds: string[]
 	groupIds: number[]
   departmentIds: string[]
   users: PermissionPrincipalGrant[]
@@ -261,7 +253,7 @@ export interface RolePrincipals {
 }
 
 export interface RolePrincipalPayload {
-  userIds: number[]
+	userIds: string[]
 	groupIds: number[]
   departmentIds: string[]
 }

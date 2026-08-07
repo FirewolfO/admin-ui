@@ -5,14 +5,12 @@ import type { Status } from '@permission/types'
 const props = withDefaults(defineProps<{
   name?: string
   identifier?: string
-  src?: string
   size?: number
   email?: string
   phone?: string
   status?: Status | ''
-  bio?: string
   showCard?: boolean
-}>(), { name: '', identifier: '', src: '', size: 36, email: '', phone: '', status: '', bio: '', showCard: true })
+}>(), { name: '', identifier: '', size: 36, email: '', phone: '', status: '', showCard: true })
 
 const colors = ['#176b5b', '#26658c', '#76558a', '#a04e45', '#80651e', '#3e5f9b', '#695247', '#4f7138']
 const displayName = computed(() => props.name.trim() || props.identifier.trim() || '用户')
@@ -28,18 +26,17 @@ const statusLabel = computed(() => props.status === 'disabled' ? '禁用' : '启
 <template>
   <el-popover placement="right" trigger="hover" :show-after="250" :width="286" :disabled="!showCard" popper-class="identity-popover">
     <template #reference>
-      <el-avatar :size="size" :src="src" class="identity-avatar" :style="{ backgroundColor: background }"><span>{{ initials }}</span></el-avatar>
+      <el-avatar :size="size" class="identity-avatar" :style="{ backgroundColor: background }"><span>{{ initials }}</span></el-avatar>
     </template>
     <div class="identity-card">
       <div class="identity-card-heading">
-        <el-avatar :size="46" :src="src" class="identity-avatar" :style="{ backgroundColor: background }"><span>{{ initials }}</span></el-avatar>
+        <el-avatar :size="46" class="identity-avatar" :style="{ backgroundColor: background }"><span>{{ initials }}</span></el-avatar>
         <div><strong>{{ displayName }}</strong><small>{{ identifier || '-' }}</small></div>
       </div>
       <dl>
         <template v-if="email"><dt>邮箱</dt><dd>{{ email }}</dd></template>
         <template v-if="phone"><dt>联系电话</dt><dd>{{ phone }}</dd></template>
         <template v-if="status"><dt>状态</dt><dd><el-tag :type="status === 'enabled' ? 'success' : 'info'" effect="plain" size="small">{{ statusLabel }}</el-tag></dd></template>
-        <template v-if="bio"><dt>简介</dt><dd>{{ bio }}</dd></template>
       </dl>
     </div>
   </el-popover>

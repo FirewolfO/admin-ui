@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Clock, CopyDocument, Delete, Edit, Key, Link, Plus, Refresh, UserFilled } from '@element-plus/icons-vue'
 import { applicationApi } from '@permission/api'
-import { apiMessage, avatarUrl } from '@/api/client'
+import { apiMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useApplicationStore } from '@permission/stores/application'
 import { copyText } from '@permission/utils/clipboard'
@@ -33,7 +33,7 @@ const administratorSaving = ref(false)
 const administratorSearching = ref(false)
 const administratorApplication = ref<Application | null>(null)
 const administratorOptions = ref<PermissionPrincipalGrant[]>([])
-const administratorIds = ref<number[]>([])
+const administratorIds = ref<string[]>([])
 const selectedAdministrators = computed(() => administratorOptions.value.filter((user) => administratorIds.value.includes(user.id)))
 const formRef = ref<FormInstance>()
 const form = reactive<ApplicationPayload>({ code: '', name: '', description: '', homepageUrl: '', status: 'enabled' })
@@ -206,10 +206,6 @@ async function saveAdministrators() {
   } catch (error) { ElMessage.error(apiMessage(error, '系统管理员保存失败')) }
   finally { administratorSaving.value = false }
 }
-function administratorAvatarUrl(principal: PermissionPrincipalGrant) {
-  const identity = { id: principal.id, avatarUpdatedAt: principal.avatarUpdatedAt }
-  return avatarUrl(identity)
-}
 onMounted(load)
 </script>
 
@@ -277,7 +273,7 @@ onMounted(load)
           <el-form-item label="系统管理员">
             <el-select v-model="administratorIds" multiple filterable remote reserve-keyword :remote-method="searchAdministratorCandidates" :loading="administratorSearching" class="full-width" placeholder="输入 People 用户名、姓名、邮箱或电话搜索">
               <el-option v-for="user in administratorOptions" :key="user.id" class="identity-select-option" :label="`${user.displayName || user.identifier} (${user.identifier})`" :value="user.id">
-                <div class="select-user-option"><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :src="administratorAvatarUrl(user)" :size="28" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><small>{{ user.identifier }}</small></span></div>
+                <div class="select-user-option"><IdentityAvatar :name="user.displayName" :identifier="user.identifier" :size="28" :email="user.email" :phone="user.phone" :status="user.status" /><span><strong>{{ user.displayName || user.identifier }}</strong><small>{{ user.identifier }}</small></span></div>
               </el-option>
             </el-select>
           </el-form-item>
@@ -285,7 +281,7 @@ onMounted(load)
         <div class="associated-principal-list">
           <el-empty v-if="!selectedAdministrators.length" description="至少选择一名系统管理员" :image-size="56" />
           <template v-else><div v-for="user in selectedAdministrators" :key="user.id" class="associated-principal">
-              <IdentityAvatar :name="user.displayName" :identifier="user.identifier" :src="administratorAvatarUrl(user)" :size="34" :email="user.email" :phone="user.phone" :status="user.status" />
+              <IdentityAvatar :name="user.displayName" :identifier="user.identifier" :size="34" :email="user.email" :phone="user.phone" :status="user.status" />
               <span><strong>{{ user.displayName || user.identifier }}</strong><small>{{ user.identifier }}</small></span>
               <el-tag :type="user.status === 'enabled' ? 'success' : 'info'" effect="plain" size="small">{{ user.status === 'enabled' ? '启用' : '禁用' }}</el-tag>
           </div></template>

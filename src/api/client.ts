@@ -1,5 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import type { TokenResponse, User } from '@permission/types'
+import type { TokenResponse } from '@permission/types'
 
 export const API_BASE_URL = import.meta.env.VITE_PERMISSION_API_BASE_URL || '/api/permission/v1'
 const accessTokenKey = 'admin_ui_access_token'
@@ -82,11 +82,6 @@ export function loadSession() {
   }
 }
 
-export function updateSessionUser(user: User) {
-  const session = loadSession()
-  if (session) sessionStorage.setItem(sessionKey, JSON.stringify({ ...session, user }))
-}
-
 export function getAccessToken() {
   return sessionStorage.getItem(accessTokenKey) || ''
 }
@@ -99,10 +94,6 @@ export function clearSession() {
   sessionStorage.removeItem(accessTokenKey)
   sessionStorage.removeItem(refreshTokenKey)
   sessionStorage.removeItem(sessionKey)
-}
-
-export function avatarUrl(_user: Pick<User, 'id' | 'avatarUpdatedAt'> | null | undefined) {
-  return ''
 }
 
 export function apiMessage(error: unknown, fallback = '请求失败，请稍后重试') {

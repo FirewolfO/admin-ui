@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authApi } from '@permission/api'
-import { clearSession, getRefreshToken, loadSession, saveSession, updateSessionUser } from '@/api/client'
+import { clearSession, getRefreshToken, loadSession, saveSession } from '@/api/client'
 import { useApplicationStore } from '@permission/stores/application'
 import type { User } from '@permission/types'
 
@@ -56,10 +56,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function setUser(value: User) {
-    user.value = value
-    updateSessionUser(value)
-  }
-
-  return { user, permissions, initialized, authenticated, can, completeOAuth, hydrate, logout, setUser }
+  return { user, permissions, initialized, authenticated, can, completeOAuth, hydrate, logout }
 })
