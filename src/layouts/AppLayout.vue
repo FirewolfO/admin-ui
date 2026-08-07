@@ -30,7 +30,6 @@ const permissionItems = computed(() => [
   { path: '/permission/permissions', label: '权限', icon: Key, permission: 'permission:list' },
   { path: '/permission/user-groups', label: '用户组', icon: UserFilled, permission: 'user_group:list' },
   { path: '/permission/audit-logs', label: '审计日志', icon: Lock, permission: 'audit:list' },
-  { path: '/permission/docs', label: 'API 文档', icon: Document, permission: '' },
 ].filter((item) => !item.permission || auth.can(item.permission)))
 
 const gatewayItems = computed(() => [
@@ -142,6 +141,9 @@ watch(isPermission, async (active) => {
             <el-select :model-value="applicationStore.currentApplicationId" :loading="applicationStore.loading" placeholder="选择应用" aria-label="当前应用" @change="applicationStore.select"><el-option v-for="application in applicationStore.applications" :key="application.id" :label="application.name" :value="application.id" /></el-select>
           </div>
           <el-segmented v-if="isGateway" v-model="gatewayWorkspace" :options="audienceOptions" class="audience-switch" aria-label="接口类型" />
+          <el-tooltip content="Inner API 文档">
+            <el-button text :icon="Document" :class="{ 'is-active': route.name === 'inner-api-docs' }" aria-label="打开 Inner API 文档" @click="router.push({ name: 'inner-api-docs' })" />
+          </el-tooltip>
           <ThemeSwitcher />
           <el-dropdown trigger="click" @command="handleCommand">
             <button class="account-trigger"><IdentityAvatar :name="auth.user?.displayName" :identifier="auth.user?.username" :size="32" :email="auth.user?.email" :phone="auth.user?.phone" :status="auth.user?.status" /><span class="account-copy"><strong>{{ auth.user?.displayName }}</strong><small>{{ auth.user?.username }}</small></span><el-icon><Setting /></el-icon></button>
@@ -149,7 +151,7 @@ watch(isPermission, async (active) => {
           </el-dropdown>
         </div>
       </header>
-      <main class="page-content"><RouterView /></main>
+      <main :class="['page-content', { 'docs-page-content': route.name === 'inner-api-docs' }]"><RouterView /></main>
     </div>
   </div>
 </template>

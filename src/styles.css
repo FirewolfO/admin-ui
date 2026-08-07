@@ -167,6 +167,7 @@ h1, h2, h3, p { margin: 0; }
 .account-copy small { margin-top: 2px; color: #78857f; font-size: 11px; }
 .masked-secret { display: inline-flex; align-items: center; gap: 4px; }
 .page-content { min-height: calc(100vh - 70px); padding: 26px 28px 40px; background: var(--theme-page-bg); }
+.page-content.docs-page-content { height: calc(100vh - 70px); min-height: 0; padding: 0; overflow: hidden; }
 .page-stack { display: flex; flex-direction: column; gap: 20px; }
 .narrow-page { max-width: 860px; }
 .page-heading, .section-heading, .table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -380,6 +381,7 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
 	.global-app-switcher > .el-icon { display: none; }
 	.account-copy { display: none; }
   .page-content { padding: 18px 14px 30px; }
+  .page-content.docs-page-content { height: calc(100vh - 60px); padding: 0; }
   .page-heading, .table-toolbar { align-items: flex-start; flex-direction: column; }
   .metric-grid { grid-template-columns: 1fr; }
   .metric-card { min-height: 88px; }

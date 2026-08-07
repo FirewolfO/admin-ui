@@ -25,6 +25,8 @@ ADMIN_UI_OAUTH_REDIRECT_URI=http://admin.example.com:5178/oauth/callback \
 
 登录完成后首先进入“所有系统”卡片页。进入系统后左侧只展示当前系统的菜单，可通过侧栏的“所有系统”打开系统抽屉并切换到其他系统。
 
+顶栏文档按钮通过 `VITE_DOCUMENT_BASE_URL` 加载文档中心的 `/inner?embedded=1`，集中展示所有系统的 Inner 内部接口；旧的 `/permission/docs` 地址会跳转到新的全局 `/docs` 页面。
+
 ## 验证
 
 ```bash
