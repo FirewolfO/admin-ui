@@ -413,6 +413,11 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
 .blog-comment-list article header small { color: var(--muted); font-size: 10px; }
 .blog-comment-list article p { margin-top: 6px; font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 
+.blog-markdown-editor { min-height: 500px; height: 100%; border-radius: 4px; }
+.blog-review-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 680px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.blog-review-queue { padding: 14px 10px; background: var(--theme-table-header); border-right: 1px solid var(--line); }.blog-review-queue header { display: flex; justify-content: space-between; padding: 6px 9px 14px; }.blog-review-queue header strong { font-size: 13px; }.blog-review-queue header span { color: var(--muted); font-size: 11px; }.blog-review-queue button { display: block; width: 100%; padding: 11px; color: inherit; text-align: left; background: transparent; border: 0; border-radius: 4px; cursor: pointer; }.blog-review-queue button:hover, .blog-review-queue button.active { background: var(--theme-table-hover); }.blog-review-queue button strong, .blog-review-queue button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.blog-review-queue button strong { font-size: 12px; }.blog-review-queue button small { margin-top: 4px; color: var(--muted); font-size: 10px; }
+.blog-review-preview { min-width: 0; padding: 24px; }.blog-review-preview > header { display: flex; align-items: center; gap: 8px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }.blog-review-preview > header > div { flex: 1; min-width: 0; }.blog-review-preview > header small { color: var(--theme-primary-dark); }.blog-review-preview > header h2 { margin-top: 4px; overflow-wrap: anywhere; font-size: 21px; }.blog-review-preview > p { margin: 18px 0; color: var(--muted); line-height: 1.65; }
+
 @media (max-width: 1050px) {
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .overview-page .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -421,6 +426,7 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
   .management-page .route-filters .el-select:nth-of-type(2) { grid-column: 1 / 2; }
   .blog-metrics { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
   .blog-editor-layout { grid-template-columns: minmax(0, 1fr) 250px; }
+	.blog-review-layout { grid-template-columns: 210px minmax(0, 1fr); }
 }
 
 @media (max-width: 760px) {
@@ -477,6 +483,7 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
   .blog-comments { display: block; }
   .blog-comments > aside { max-height: 210px; border-right: 0; border-bottom: 1px solid var(--line); }
   .blog-comments > section { padding: 15px; }
+	.blog-review-layout { display: block; }.blog-review-queue { max-height: 220px; overflow: auto; border-right: 0; border-bottom: 1px solid var(--line); }.blog-review-preview { padding: 16px; }
 }
 
 @media (max-width: 520px) {

@@ -38,6 +38,7 @@ const router = createRouter({
         { path: 'blog/posts', name: 'blog-posts', component: () => import('@blog/views/PostsView.vue'), meta: { title: '文章管理', module: 'blog', permission: 'svc.inner.blog:view' } },
         { path: 'blog/posts/new', name: 'blog-post-new', component: () => import('@blog/views/PostEditorView.vue'), meta: { title: '新建文章', module: 'blog', permission: 'svc.inner.blog:manage' } },
         { path: 'blog/posts/:id/edit', name: 'blog-post-edit', component: () => import('@blog/views/PostEditorView.vue'), meta: { title: '编辑文章', module: 'blog', permission: 'svc.inner.blog:manage' } },
+		{ path: 'blog/reviews', name: 'blog-reviews', component: () => import('@blog/views/ReviewsView.vue'), meta: { title: '内容审核', module: 'blog', permission: 'svc.inner.blog:view' } },
         { path: 'blog/categories', name: 'blog-categories', component: () => import('@blog/views/CategoriesView.vue'), meta: { title: '分类管理', module: 'blog', permission: 'svc.inner.blog:manage' } },
         { path: 'blog/comments', name: 'blog-comments', component: () => import('@blog/views/CommentsView.vue'), meta: { title: '评论管理', module: 'blog', permission: 'svc.inner.blog:view' } },
         { path: 'forbidden', name: 'forbidden', component: () => import('@permission/views/ForbiddenView.vue'), meta: { title: '无权访问' } },

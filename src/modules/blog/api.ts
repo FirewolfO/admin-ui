@@ -24,4 +24,7 @@ export const blogApi = {
   createComment: (postId: string, content: string) => unwrap<Comment>(api.post(`/posts/${postId}/comments`, { content })),
   deleteComment: (id: string) => unwrap<{ deleted: boolean }>(api.delete(`/comments/${id}`)),
   upload: (file: File) => { const data = new FormData(); data.append('file', file); return unwrap<Media>(api.post('/media', data, { headers: { 'Content-Type': 'multipart/form-data' } })) },
+  reviews: () => unwrap<Post[]>(api.get('/reviews')),
+  approve: (id: string) => unwrap<Post>(api.post(`/reviews/${id}/approve`)),
+  reject: (id: string, note: string) => unwrap<Post>(api.post(`/reviews/${id}/reject`, { note })),
 }

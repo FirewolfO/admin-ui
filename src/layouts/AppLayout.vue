@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   ChatDotRound, Close, CollectionTag, Connection, DataBoard, Document, EditPen, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
-  Operation, Setting, SetUp, SwitchButton, UserFilled,
+  Operation, Select, Setting, SetUp, SwitchButton, UserFilled,
 } from '@element-plus/icons-vue'
 import { apiMessage } from '@/api/client'
 import { internalSystems } from '@/config/systems'
@@ -42,6 +42,7 @@ const gatewayItems = computed(() => [
 const blogItems = computed(() => [
   { path: '/blog/dashboard', label: '工作台', icon: DataBoard, permission: 'svc.inner.blog:view' },
   { path: '/blog/posts', label: '文章', icon: EditPen, permission: 'svc.inner.blog:view' },
+	...((auth.can('blog.review:manage') || auth.can('svc.inner.blog:manage')) ? [{ path: '/blog/reviews', label: '内容审核', icon: Select, permission: 'svc.inner.blog:view' }] : []),
   { path: '/blog/categories', label: '分类', icon: CollectionTag, permission: 'svc.inner.blog:manage' },
   { path: '/blog/comments', label: '评论', icon: ChatDotRound, permission: 'svc.inner.blog:view' },
 ].filter((item) => auth.can(item.permission)))
