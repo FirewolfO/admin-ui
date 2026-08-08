@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
-import { Connection, Lock } from '@element-plus/icons-vue'
+import { Connection, EditPen, Lock } from '@element-plus/icons-vue'
 
-export type SystemKey = 'permission' | 'gateway'
+export type SystemKey = 'permission' | 'gateway' | 'blog'
 
 export interface InternalSystem {
   key: SystemKey
@@ -31,5 +31,14 @@ export const internalSystems: InternalSystem[] = [
     entry: '/gateway/overview',
     icon: Connection,
     requiredPermission: 'gateway:manage',
+  },
+  {
+    key: 'blog',
+    name: 'Blog',
+    label: '内部博客',
+    description: '团队文章、分类与评论',
+    entry: '/blog/dashboard',
+    icon: EditPen,
+    requiredPermission: 'svc.inner.blog:view',
   },
 ]

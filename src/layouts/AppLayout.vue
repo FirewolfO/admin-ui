@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  Close, Connection, DataBoard, Document, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
+  ChatDotRound, Close, CollectionTag, Connection, DataBoard, Document, EditPen, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
   Operation, Setting, SetUp, SwitchButton, UserFilled,
 } from '@element-plus/icons-vue'
 import { apiMessage } from '@/api/client'
@@ -39,12 +39,20 @@ const gatewayItems = computed(() => [
   ...(audience.value === 'inner' ? [{ path: '/gateway/credentials', label: '调用凭据', icon: Key }] : []),
 ])
 
+const blogItems = computed(() => [
+  { path: '/blog/dashboard', label: '工作台', icon: DataBoard, permission: 'svc.inner.blog:view' },
+  { path: '/blog/posts', label: '文章', icon: EditPen, permission: 'svc.inner.blog:view' },
+  { path: '/blog/categories', label: '分类', icon: CollectionTag, permission: 'svc.inner.blog:manage' },
+  { path: '/blog/comments', label: '评论', icon: ChatDotRound, permission: 'svc.inner.blog:view' },
+].filter((item) => auth.can(item.permission)))
+
 const pageTitle = computed(() => String(route.meta.title || 'Admin Center'))
 const isPermission = computed(() => route.meta.module === 'permission')
 const isGateway = computed(() => route.meta.module === 'gateway')
+const isBlog = computed(() => route.meta.module === 'blog')
 const activeSystem = computed(() => internalSystems.find((system) => system.key === route.meta.module) || null)
 const visibleSystems = computed(() => internalSystems.filter((system) => auth.can(system.requiredPermission)))
-const activeItems = computed(() => isPermission.value ? permissionItems.value : isGateway.value ? gatewayItems.value : [])
+const activeItems = computed(() => isPermission.value ? permissionItems.value : isGateway.value ? gatewayItems.value : isBlog.value ? blogItems.value : [])
 const gatewayWorkspace = computed<RouteAudience>({
   get: () => audience.value,
   set: (value) => {

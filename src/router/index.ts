@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 declare module 'vue-router' {
   interface RouteMeta {
     title?: string
-    module?: 'permission' | 'gateway'
+    module?: 'permission' | 'gateway' | 'blog'
     permission?: string
     public?: boolean
   }
@@ -34,6 +34,12 @@ const router = createRouter({
         { path: 'gateway/services', name: 'gateway-services', component: () => import('@gateway/views/ServicesView.vue'), meta: { title: '服务管理', module: 'gateway' } },
         { path: 'gateway/routes', name: 'gateway-routes', component: () => import('@gateway/views/RoutesView.vue'), meta: { title: '路由管理', module: 'gateway' } },
         { path: 'gateway/credentials', name: 'gateway-credentials', component: () => import('@gateway/views/CredentialsView.vue'), meta: { title: '调用凭据', module: 'gateway' } },
+        { path: 'blog/dashboard', name: 'blog-dashboard', component: () => import('@blog/views/DashboardView.vue'), meta: { title: '博客工作台', module: 'blog', permission: 'svc.inner.blog:view' } },
+        { path: 'blog/posts', name: 'blog-posts', component: () => import('@blog/views/PostsView.vue'), meta: { title: '文章管理', module: 'blog', permission: 'svc.inner.blog:view' } },
+        { path: 'blog/posts/new', name: 'blog-post-new', component: () => import('@blog/views/PostEditorView.vue'), meta: { title: '新建文章', module: 'blog', permission: 'svc.inner.blog:manage' } },
+        { path: 'blog/posts/:id/edit', name: 'blog-post-edit', component: () => import('@blog/views/PostEditorView.vue'), meta: { title: '编辑文章', module: 'blog', permission: 'svc.inner.blog:manage' } },
+        { path: 'blog/categories', name: 'blog-categories', component: () => import('@blog/views/CategoriesView.vue'), meta: { title: '分类管理', module: 'blog', permission: 'svc.inner.blog:manage' } },
+        { path: 'blog/comments', name: 'blog-comments', component: () => import('@blog/views/CommentsView.vue'), meta: { title: '评论管理', module: 'blog', permission: 'svc.inner.blog:view' } },
         { path: 'forbidden', name: 'forbidden', component: () => import('@permission/views/ForbiddenView.vue'), meta: { title: '无权访问' } },
       ],
     },

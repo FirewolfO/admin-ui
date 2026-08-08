@@ -7,7 +7,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@permission/*": ["./src/modules/permission/*"],
-      "@gateway/*": ["./src/modules/gateway/*"]
+      "@gateway/*": ["./src/modules/gateway/*"],
+      "@blog/*": ["./src/modules/blog/*"]
     },
     "strict": true,
     "noUnusedLocals": true,
