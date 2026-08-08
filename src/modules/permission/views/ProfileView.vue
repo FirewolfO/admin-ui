@@ -14,7 +14,7 @@ function openPeople() { window.location.assign(peopleURL) }
       <el-descriptions :column="2" border>
         <el-descriptions-item label="用户名">{{ auth.user?.username || '-' }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ auth.user?.displayName || '-' }}</el-descriptions-item>
-		<el-descriptions-item label="工号">{{ auth.user?.employeeNo || '-' }}</el-descriptions-item>
+		<el-descriptions-item label="工号">{{ auth.user?.employeeNo ? String(auth.user.employeeNo).padStart(6, '0') : '-' }}</el-descriptions-item>
 		<el-descriptions-item label="部门">{{ auth.user?.department || '-' }}</el-descriptions-item>
 		<el-descriptions-item label="职务">{{ auth.user?.title || '-' }}</el-descriptions-item>
         <el-descriptions-item label="邮箱">{{ auth.user?.email || '-' }}</el-descriptions-item>

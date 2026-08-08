@@ -55,6 +55,7 @@ router.beforeEach(async (to) => {
   if (to.meta.public) return auth.authenticated && to.name === 'login' ? '/systems' : true
   if (!auth.authenticated) return { name: 'login', query: { redirect: to.fullPath } }
   if (to.meta.permission && !auth.can(to.meta.permission)) return { name: 'forbidden' }
+  if (to.name === 'blog-reviews' && !auth.can('blog.review:manage') && !auth.can('svc.inner.blog:manage')) return { name: 'forbidden' }
   if (to.meta.module === 'gateway' && !auth.can('gateway:manage')) return { name: 'forbidden' }
   return true
 })

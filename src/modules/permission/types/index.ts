@@ -102,7 +102,7 @@ export interface UserGroupPayload {
 
 export interface User {
   id: string
-  employeeNo: string
+  employeeNo: number
   username: string
   displayName: string
   email: string

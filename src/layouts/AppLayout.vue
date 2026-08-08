@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import {
-  ChatDotRound, Close, CollectionTag, Connection, DataBoard, Document, EditPen, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
+  Bell, ChatDotRound, Close, CollectionTag, Connection, DataBoard, Document, EditPen, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
   Operation, Select, Setting, SetUp, SwitchButton, UserFilled,
 } from '@element-plus/icons-vue'
 import { apiMessage } from '@/api/client'
@@ -14,6 +14,7 @@ import { useApplicationStore } from '@permission/stores/application'
 import { useAudience } from '@gateway/composables/useAudience'
 import { useAuthStore } from '@/stores/auth'
 import type { RouteAudience } from '@gateway/types'
+import { blogApi } from '@blog/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,6 +23,9 @@ const applicationStore = useApplicationStore()
 const { audience, setAudience } = useAudience()
 const navigationDrawerOpen = ref(false)
 const systemDrawerOpen = ref(false)
+const pendingBlogReviews = ref(0)
+let previousBlogReviews: number | null = null
+let reviewTimer = 0
 
 const permissionItems = computed(() => [
   { path: '/permission/dashboard', label: '概览', icon: Grid, permission: 'dashboard:view' },
@@ -90,6 +94,21 @@ async function handleCommand(command: string) {
   }
 }
 
+async function loadBlogReviewCount() {
+  if (!auth.can('blog.review:manage') && !auth.can('svc.inner.blog:manage')) return
+  try {
+    const count = (await blogApi.reviews()).length
+    if (previousBlogReviews !== null && count > previousBlogReviews) ElNotification({ title: '新的博客内容待审核', message: `审核队列新增 ${count - previousBlogReviews} 篇文章`, type: 'warning', duration: 6000 })
+    previousBlogReviews = count
+    pendingBlogReviews.value = count
+  } catch {
+    // Review polling is advisory and should not disturb other admin modules.
+  }
+}
+
+onMounted(() => { void loadBlogReviewCount(); reviewTimer = window.setInterval(loadBlogReviewCount, 10_000) })
+onBeforeUnmount(() => window.clearInterval(reviewTimer))
+
 watch(isPermission, async (active) => {
   if (!active || !auth.can('application:list')) return
   try { await applicationStore.hydrate() }
@@ -150,6 +169,9 @@ watch(isPermission, async (active) => {
             <el-select :model-value="applicationStore.currentApplicationId" :loading="applicationStore.loading" placeholder="选择应用" aria-label="当前应用" @change="applicationStore.select"><el-option v-for="application in applicationStore.applications" :key="application.id" :label="application.name" :value="application.id" /></el-select>
           </div>
           <el-segmented v-if="isGateway" v-model="gatewayWorkspace" :options="audienceOptions" class="audience-switch" aria-label="接口类型" />
+          <el-tooltip v-if="auth.can('blog.review:manage') || auth.can('svc.inner.blog:manage')" content="博客待审核内容">
+            <el-badge :value="pendingBlogReviews" :hidden="pendingBlogReviews === 0" :max="99"><el-button text :icon="Bell" aria-label="博客待审核内容" @click="router.push('/blog/reviews')" /></el-badge>
+          </el-tooltip>
           <el-tooltip content="Inner API 文档">
             <el-button text :icon="Document" :class="{ 'is-active': route.name === 'inner-api-docs' }" aria-label="打开 Inner API 文档" @click="router.push({ name: 'inner-api-docs' })" />
           </el-tooltip>
