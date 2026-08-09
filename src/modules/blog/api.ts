@@ -1,6 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { clearSession, getAccessToken, refreshPlatformAccessToken } from '@/api/client'
 import type { Category, Comment, Dashboard, Media, Post, PostInput, PostPage } from './types'
+import { toPostInput } from './post'
 interface Envelope<T> { code: string; message: string; data: T; requestId: string }
 interface RetryConfig extends InternalAxiosRequestConfig { _retry?: boolean }
 const api = axios.create({ baseURL: import.meta.env.VITE_BLOG_API_BASE_URL || '/api/blog/v1', timeout: 20_000 })
@@ -12,10 +13,11 @@ export const blogApi = {
   dashboard: () => unwrap<Dashboard>(api.get('/dashboard')),
   posts: (params: Record<string, string | number>) => unwrap<PostPage>(api.get('/posts', { params })),
   post: (id: string) => unwrap<Post>(api.get(`/posts/${id}`)),
-  createPost: (input: PostInput) => unwrap<Post>(api.post('/posts', input)),
-  updatePost: (id: string, input: PostInput) => unwrap<Post>(api.put(`/posts/${id}`, input)),
+  createPost: (input: PostInput) => unwrap<Post>(api.post('/posts', toPostInput(input))),
+  updatePost: (id: string, input: PostInput) => unwrap<Post>(api.put(`/posts/${id}`, toPostInput(input))),
   publishPost: (id: string) => unwrap<Post>(api.post(`/posts/${id}/publish`)),
   deletePost: (id: string) => unwrap<{ deleted: boolean }>(api.delete(`/posts/${id}`)),
+  ratePost: (id: string, stars: number) => unwrap<{ stars: number; ratingCount: number; ratingAverage: number }>(api.post(`/posts/${id}/rating`, { stars })),
   categories: () => unwrap<Category[]>(api.get('/categories')),
   createCategory: (input: Pick<Category, 'name' | 'slug' | 'description'>) => unwrap<Category>(api.post('/categories', input)),
   updateCategory: (id: string, input: Pick<Category, 'name' | 'slug' | 'description'>) => unwrap<Category>(api.put(`/categories/${id}`, input)),

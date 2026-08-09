@@ -404,14 +404,25 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
 .blog-comments > aside button strong { font-size: 12px; }
 .blog-comments > aside button small { margin-top: 4px; color: var(--muted); font-size: 10px; }
 .blog-comments > section { min-width: 0; padding: 20px; }
+.blog-comment-context { display: flex; align-items: center; justify-content: space-between; min-height: 52px; gap: 16px; padding-bottom: 14px; }
+.blog-comment-context > div { min-width: 0; }
+.blog-comment-context strong, .blog-comment-context small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blog-comment-context strong { font-size: 13px; }
+.blog-comment-context small { margin-top: 4px; color: var(--muted); font-size: 10px; }
+.blog-comment-rating { display: inline-flex; min-width: 120px; justify-content: flex-end; }
 .blog-comment-composer { display: grid; justify-items: end; gap: 9px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
 .blog-comment-composer .el-textarea { width: 100%; }
+.blog-comment-actions { display: flex; align-items: center; gap: 8px; }
 .blog-comment-list article { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: start; gap: 10px; padding: 16px 0; border-bottom: 1px solid var(--line); }
 .blog-comment-avatar { display: grid; place-items: center; width: 32px; height: 32px; color: var(--theme-primary-dark); background: var(--theme-primary-light-9); border-radius: 50%; font-size: 12px; font-weight: 700; }
 .blog-comment-list article header { display: flex; align-items: baseline; gap: 8px; }
 .blog-comment-list article header strong { font-size: 12px; }
 .blog-comment-list article header small { color: var(--muted); font-size: 10px; }
 .blog-comment-list article p { margin-top: 6px; font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.emoji-trigger { width: 32px; height: 32px; padding: 0; font-size: 17px; }
+.emoji-grid { display: grid; grid-template-columns: repeat(6, 30px); gap: 5px; }
+.emoji-grid button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; background: transparent; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 17px; }
+.emoji-grid button:hover, .emoji-grid button:focus-visible { background: var(--theme-table-hover); border-color: var(--line); outline: none; }
 
 .blog-markdown-editor { min-height: 500px; height: 100%; border-radius: 4px; }
 .blog-review-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 680px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
@@ -483,6 +494,8 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
   .blog-comments { display: block; }
   .blog-comments > aside { max-height: 210px; border-right: 0; border-bottom: 1px solid var(--line); }
   .blog-comments > section { padding: 15px; }
+  .blog-comment-context { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .blog-comment-rating { justify-content: flex-start; }
 	.blog-review-layout { display: block; }.blog-review-queue { max-height: 220px; overflow: auto; border-right: 0; border-bottom: 1px solid var(--line); }.blog-review-preview { padding: 16px; }
 }
 
