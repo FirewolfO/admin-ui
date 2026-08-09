@@ -1,6 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { clearSession, getAccessToken, refreshPlatformAccessToken } from '@/api/client'
-import type { Category, Comment, Dashboard, Media, Post, PostInput, PostPage } from './types'
+import type { Category, Comment, Dashboard, Media, Post, PostInput, PostPage, ReviewNotification, ReviewSubmission } from './types'
 import { toPostInput } from './post'
 interface Envelope<T> { code: string; message: string; data: T; requestId: string }
 interface RetryConfig extends InternalAxiosRequestConfig { _retry?: boolean }
@@ -27,6 +27,9 @@ export const blogApi = {
   deleteComment: (id: string) => unwrap<{ deleted: boolean }>(api.delete(`/comments/${id}`)),
   upload: (file: File) => { const data = new FormData(); data.append('file', file); return unwrap<Media>(api.post('/media', data, { headers: { 'Content-Type': 'multipart/form-data' } })) },
   reviews: () => unwrap<Post[]>(api.get('/reviews')),
+  myReviews: () => unwrap<ReviewSubmission[]>(api.get('/reviews/mine')),
+  reviewNotifications: () => unwrap<ReviewNotification[]>(api.get('/reviews/notifications')),
+  readReviewNotifications: () => unwrap<{ read: number }>(api.post('/reviews/notifications/read')),
   approve: (id: string) => unwrap<Post>(api.post(`/reviews/${id}/approve`)),
   reject: (id: string, note: string) => unwrap<Post>(api.post(`/reviews/${id}/reject`, { note })),
 }

@@ -15,6 +15,7 @@ import { useAudience } from '@gateway/composables/useAudience'
 import { useAuthStore } from '@/stores/auth'
 import type { RouteAudience } from '@gateway/types'
 import { blogApi } from '@blog/api'
+import { reviewNotificationMessage } from '@blog/review'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,8 +25,12 @@ const { audience, setAudience } = useAudience()
 const navigationDrawerOpen = ref(false)
 const systemDrawerOpen = ref(false)
 const pendingBlogReviews = ref(0)
+const unreadBlogReviewResults = ref(0)
 let previousBlogReviews: number | null = null
 let reviewTimer = 0
+const notifiedBlogResultIDs = new Set<string>()
+const blogReviewBadgeCount = computed(() => pendingBlogReviews.value + unreadBlogReviewResults.value)
+const blogReviewBellTooltip = computed(() => unreadBlogReviewResults.value ? '博客审核结果与待审内容' : '博客审核记录')
 
 const permissionItems = computed(() => [
   { path: '/permission/dashboard', label: '概览', icon: Grid, permission: 'dashboard:view' },
@@ -46,7 +51,7 @@ const gatewayItems = computed(() => [
 const blogItems = computed(() => [
   { path: '/blog/dashboard', label: '工作台', icon: DataBoard, permission: 'svc.inner.blog:view' },
   { path: '/blog/posts', label: '文章', icon: EditPen, permission: 'svc.inner.blog:view' },
-	...((auth.can('blog.review:manage') || auth.can('svc.inner.blog:manage')) ? [{ path: '/blog/reviews', label: '内容审核', icon: Select, permission: 'svc.inner.blog:view' }] : []),
+  { path: '/blog/reviews', label: '审核记录', icon: Select, permission: 'svc.inner.blog:view' },
   { path: '/blog/categories', label: '分类', icon: CollectionTag, permission: 'svc.inner.blog:manage' },
   { path: '/blog/comments', label: '评论', icon: ChatDotRound, permission: 'svc.inner.blog:view' },
 ].filter((item) => auth.can(item.permission)))
@@ -94,19 +99,38 @@ async function handleCommand(command: string) {
   }
 }
 
-async function loadBlogReviewCount() {
-  if (!auth.can('blog.review:manage') && !auth.can('svc.inner.blog:manage')) return
+async function loadBlogReviewActivity() {
+  if (!auth.can('svc.inner.blog:view')) return
+  if (auth.can('blog.review:manage') || auth.can('svc.inner.blog:manage')) {
+    try {
+      const count = (await blogApi.reviews()).length
+      if (previousBlogReviews !== null && count > previousBlogReviews) ElNotification({ title: '新的博客内容待审核', message: `审核队列新增 ${count - previousBlogReviews} 篇文章`, type: 'warning', duration: 6000 })
+      previousBlogReviews = count
+      pendingBlogReviews.value = count
+    } catch {
+      // Review polling is advisory and should not disturb other admin modules.
+    }
+  }
   try {
-    const count = (await blogApi.reviews()).length
-    if (previousBlogReviews !== null && count > previousBlogReviews) ElNotification({ title: '新的博客内容待审核', message: `审核队列新增 ${count - previousBlogReviews} 篇文章`, type: 'warning', duration: 6000 })
-    previousBlogReviews = count
-    pendingBlogReviews.value = count
+    const unread = (await blogApi.reviewNotifications()).filter((item) => !item.readAt)
+    const unseen = unread.filter((item) => !notifiedBlogResultIDs.has(item.id))
+    if (unseen.length) {
+      const latest = unseen[0]
+      ElNotification({ title: unseen.length > 1 ? `${unseen.length} 条博客审核结果已更新` : '博客审核结果已更新', message: reviewNotificationMessage(latest), type: latest.reviewStatus === 'rejected' ? 'error' : 'success', duration: 8000, onClick: () => router.push('/blog/reviews') })
+      unseen.forEach((item) => notifiedBlogResultIDs.add(item.id))
+    }
+    unreadBlogReviewResults.value = unread.length
   } catch {
-    // Review polling is advisory and should not disturb other admin modules.
+    // Result notifications are retried by the next poll.
   }
 }
 
-onMounted(() => { void loadBlogReviewCount(); reviewTimer = window.setInterval(loadBlogReviewCount, 10_000) })
+async function clearBlogReviewNotifications() {
+  unreadBlogReviewResults.value = 0
+  try { await blogApi.readReviewNotifications() } catch { /* The next poll will retry. */ }
+}
+
+onMounted(() => { void loadBlogReviewActivity(); reviewTimer = window.setInterval(loadBlogReviewActivity, 10_000) })
 onBeforeUnmount(() => window.clearInterval(reviewTimer))
 
 watch(isPermission, async (active) => {
@@ -114,6 +138,8 @@ watch(isPermission, async (active) => {
   try { await applicationStore.hydrate() }
   catch (error) { ElMessage.error(apiMessage(error, '应用列表加载失败')) }
 }, { immediate: true })
+
+watch(() => route.path, (path) => { if (path === '/blog/reviews') void clearBlogReviewNotifications() }, { immediate: true })
 </script>
 
 <template>
@@ -169,8 +195,8 @@ watch(isPermission, async (active) => {
             <el-select :model-value="applicationStore.currentApplicationId" :loading="applicationStore.loading" placeholder="选择应用" aria-label="当前应用" @change="applicationStore.select"><el-option v-for="application in applicationStore.applications" :key="application.id" :label="application.name" :value="application.id" /></el-select>
           </div>
           <el-segmented v-if="isGateway" v-model="gatewayWorkspace" :options="audienceOptions" class="audience-switch" aria-label="接口类型" />
-          <el-tooltip v-if="auth.can('blog.review:manage') || auth.can('svc.inner.blog:manage')" content="博客待审核内容">
-            <el-badge :value="pendingBlogReviews" :hidden="pendingBlogReviews === 0" :max="99"><el-button text :icon="Bell" aria-label="博客待审核内容" @click="router.push('/blog/reviews')" /></el-badge>
+          <el-tooltip v-if="auth.can('svc.inner.blog:view')" :content="blogReviewBellTooltip">
+            <el-badge :value="blogReviewBadgeCount" :hidden="blogReviewBadgeCount === 0" :max="99"><el-button text :icon="Bell" aria-label="博客审核动态" @click="router.push('/blog/reviews')" /></el-badge>
           </el-tooltip>
           <el-tooltip content="Inner API 文档">
             <el-button text :icon="Document" :class="{ 'is-active': route.name === 'inner-api-docs' }" aria-label="打开 Inner API 文档" @click="router.push({ name: 'inner-api-docs' })" />

@@ -425,6 +425,18 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
 .emoji-grid button:hover, .emoji-grid button:focus-visible { background: var(--theme-table-hover); border-color: var(--line); outline: none; }
 
 .blog-markdown-editor { min-height: 500px; height: 100%; border-radius: 4px; }
+.blog-review-page { min-width: 0; }
+.blog-review-tabs > .el-tabs__header { margin-bottom: 14px; }
+.blog-review-history { min-height: 260px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.blog-review-history > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.blog-review-history > header h2 { font-size: 16px; }
+.blog-review-history > header p { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.blog-review-title strong, .blog-review-title small, .blog-review-outcome, .blog-reviewed-at { display: block; }
+.blog-review-title strong { overflow-wrap: anywhere; font-size: 13px; }
+.blog-review-title small, .blog-reviewed-at { margin-top: 4px; color: var(--muted); font-size: 10px; }
+.blog-review-outcome { color: var(--ink); line-height: 1.55; overflow-wrap: anywhere; }
+.blog-review-outcome.rejected { color: var(--el-color-danger); }
+.blog-review-history-mobile { display: none; }
 .blog-review-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 680px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
 .blog-review-queue { padding: 14px 10px; background: var(--theme-table-header); border-right: 1px solid var(--line); }.blog-review-queue header { display: flex; justify-content: space-between; padding: 6px 9px 14px; }.blog-review-queue header strong { font-size: 13px; }.blog-review-queue header span { color: var(--muted); font-size: 11px; }.blog-review-queue button { display: block; width: 100%; padding: 11px; color: inherit; text-align: left; background: transparent; border: 0; border-radius: 4px; cursor: pointer; }.blog-review-queue button:hover, .blog-review-queue button.active { background: var(--theme-table-hover); }.blog-review-queue button strong, .blog-review-queue button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.blog-review-queue button strong { font-size: 12px; }.blog-review-queue button small { margin-top: 4px; color: var(--muted); font-size: 10px; }
 .blog-review-preview { min-width: 0; padding: 24px; }.blog-review-preview > header { display: flex; align-items: center; gap: 8px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }.blog-review-preview > header > div { flex: 1; min-width: 0; }.blog-review-preview > header small { color: var(--theme-primary-dark); }.blog-review-preview > header h2 { margin-top: 4px; overflow-wrap: anywhere; font-size: 21px; }.blog-review-preview > p { margin: 18px 0; color: var(--muted); line-height: 1.65; }
@@ -496,6 +508,7 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
   .blog-comments > section { padding: 15px; }
   .blog-comment-context { align-items: flex-start; flex-direction: column; gap: 10px; }
   .blog-comment-rating { justify-content: flex-start; }
+	.blog-review-history > header { align-items: flex-start; padding: 15px; }.blog-review-history-table { display: none; }.blog-review-history-mobile { display: block; }.blog-review-history-mobile article { padding: 15px; border-bottom: 1px solid var(--line); }.blog-review-history-mobile article:last-of-type { border-bottom: 0; }.blog-review-history-mobile article > header, .blog-review-history-mobile article > footer { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }.blog-review-history-mobile article > header .blog-review-title { min-width: 0; }.blog-review-history-mobile article > p { margin-top: 11px; }.blog-review-history-mobile article > footer { align-items: center; min-height: 28px; margin-top: 7px; }
 	.blog-review-layout { display: block; }.blog-review-queue { max-height: 220px; overflow: auto; border-right: 0; border-bottom: 1px solid var(--line); }.blog-review-preview { padding: 16px; }
 }
 
