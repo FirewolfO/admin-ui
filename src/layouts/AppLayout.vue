@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
 import {
   Bell, ChatDotRound, ChatLineRound, Close, CollectionTag, Connection, DataAnalysis, DataBoard, Document, EditPen, Expand, Grid, Key, Link, Lock, MagicStick, Menu as MenuIcon,
-  Operation, Select, Setting, SetUp, SwitchButton, UserFilled,
+  Operation, Select, Setting, SetUp, SwitchButton, TrendCharts, UserFilled,
 } from '@element-plus/icons-vue'
 import { apiMessage } from '@/api/client'
 import { internalSystems } from '@/config/systems'
@@ -58,6 +58,8 @@ const blogItems = computed(() => [
 
 const aiWorkbenchItems = [
   { path: '/ai-workbench/chat', label: '对话', icon: ChatLineRound },
+  { path: '/ai-workbench/news', label: 'AI 热点', icon: TrendCharts },
+  { path: '/ai-workbench/people', label: '大佬动态', icon: UserFilled },
   { path: '/ai-workbench/prompts', label: '提示词', icon: MagicStick },
   { path: '/ai-workbench/providers', label: '模型连接', icon: Connection },
   { path: '/ai-workbench/dashboard', label: '用量概览', icon: DataAnalysis },

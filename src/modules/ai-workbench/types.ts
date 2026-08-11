@@ -5,3 +5,10 @@ export interface PromptInput { title: string; description: string; category: str
 export interface Message { id: string; conversationId: string; role: 'user' | 'assistant' | 'system'; content: string; model?: string; promptTokens: number; completionTokens: number; latencyMs: number; status: 'completed' | 'failed'; createdAt: string }
 export interface Conversation { id: string; title: string; providerId: string; model: string; systemPrompt: string; pinned: boolean; createdAt: string; updatedAt: string; messageCount: number; lastMessage?: string; messages?: Message[] }
 export interface Dashboard { conversationCount: number; messageCount: number; promptCount: number; providerCount: number; totalTokens: number; recent: Conversation[] }
+export interface NewsArticle { id: string; sourceCode: string; sourceName: string; title: string; summary: string; url: string; author: string; publishedAt: string; favorite: boolean }
+export interface ContentSource { code: string; name: string }
+export interface NewsResult { items: NewsArticle[]; sources: ContentSource[]; lastSuccessAt?: string; lastError: string }
+export interface TrackedPerson { id: string; platform: 'x'; handle: string; displayName: string; profileImageUrl: string; enabled: boolean; lastFetchedAt?: string; lastError: string }
+export interface PeopleResult { people: TrackedPerson[]; xConfigured: boolean; lastSuccessAt?: string; lastError: string }
+export interface SocialPost { id: string; personId: string; handle: string; displayName: string; content: string; url: string; publishedAt: string; likeCount: number; repostCount: number; replyCount: number; favorite: boolean }
+export interface SyncState { key: string; lastAttemptAt?: string; lastSuccessAt?: string; lastError: string; itemsFetched: number }
