@@ -1,6 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { clearSession, getAccessToken, refreshPlatformAccessToken } from '@/api/client'
-import type { Conversation, Dashboard, Message, NewsResult, PeopleResult, Prompt, PromptInput, Provider, ProviderInput, SocialPost, SyncState, TrackedPerson } from './types'
+import type { Conversation, Dashboard, Message, NewsResult, NewsSummaryResult, PeopleResult, Prompt, PromptInput, Provider, ProviderInput, SocialPost, SyncState, TrackedPerson } from './types'
 
 interface Envelope<T> { code: string; message: string; data: T }
 interface RetryConfig extends InternalAxiosRequestConfig { _retry?: boolean }
@@ -37,6 +37,7 @@ export const workbenchApi = {
   sendMessage: (id: string, content: string) => unwrap<Message>(api.post(`/conversations/${id}/messages`, { content })),
   news: (search = '', source = '', favorite = false) => unwrap<NewsResult>(api.get('/news', { params: { search, source, favorite } })),
   refreshNews: () => unwrap<SyncState>(api.post('/news/refresh')),
+  summarizeNews: (articleIds: string[]) => unwrap<NewsSummaryResult>(api.post('/news/summaries', { articleIds })),
   favoriteNews: (id: string, favorite: boolean) => unwrap<{ favorite: boolean }>(api.put(`/news/${id}/favorite`, { favorite })),
   people: () => unwrap<PeopleResult>(api.get('/people')),
   addPerson: (handle: string, displayName: string) => unwrap<TrackedPerson>(api.post('/people', { handle, displayName })),
