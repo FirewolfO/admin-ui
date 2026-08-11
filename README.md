@@ -1,6 +1,6 @@
 # Admin UI
 
-内部系统统一管理入口。当前将 Permission 与 Gateway 作为原生业务模块集成到同一个 Vue 应用中，并通过 Permission 后端只完成一次 People OAuth 登录。
+内部系统统一管理入口。当前将 Permission、Gateway、Blog 与 AI Workbench 作为原生业务模块集成到同一个 Vue 应用中，并通过 Permission 后端只完成一次 People OAuth 登录。
 
 ## 启动
 
@@ -11,7 +11,7 @@ npm install
 ./start.sh
 ```
 
-默认地址为 `http://10.251.237.216:5178`，People 登录地址为 `http://10.251.237.216:5177`。Permission API 代理到 `http://127.0.0.1:8081`，Gateway Admin API 代理到 `http://127.0.0.1:8083`。
+默认地址为 `http://10.251.237.216:5178`，People 登录地址为 `http://10.251.237.216:5177`。Permission API 代理到 `http://127.0.0.1:8081`，Gateway Admin API 代理到 `http://127.0.0.1:8083`，AI Workbench API 代理到 `http://127.0.0.1:8087`。
 
 所有启动配置都可以通过环境变量覆盖：
 
@@ -21,7 +21,7 @@ ADMIN_UI_OAUTH_REDIRECT_URI=http://admin.example.com:5178/oauth/callback \
 ./start.sh
 ```
 
-统一平台只通过 Permission OAuth 发起一次 People 登录。Gateway 模块使用同一枚平台访问令牌，不会再次跳转登录；独立的 Permission UI 和 Gateway UI 仍保留各自登录入口。
+统一平台只通过 Permission OAuth 发起一次 People 登录。Gateway 与 AI Workbench 模块使用同一枚平台访问令牌，不会再次跳转登录；AI Workbench 独立工作台仍通过 People OAuth 登录，并与统一入口共享个人数据。
 
 登录完成后首先进入“所有系统”卡片页。进入系统后左侧只展示当前系统的菜单，可通过侧栏的“所有系统”打开系统抽屉并切换到其他系统。
 

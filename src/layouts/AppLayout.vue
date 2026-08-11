@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
 import {
-  Bell, ChatDotRound, Close, CollectionTag, Connection, DataBoard, Document, EditPen, Expand, Grid, Key, Link, Lock, Menu as MenuIcon,
+  Bell, ChatDotRound, ChatLineRound, Close, CollectionTag, Connection, DataAnalysis, DataBoard, Document, EditPen, Expand, Grid, Key, Link, Lock, MagicStick, Menu as MenuIcon,
   Operation, Select, Setting, SetUp, SwitchButton, UserFilled,
 } from '@element-plus/icons-vue'
 import { apiMessage } from '@/api/client'
@@ -56,13 +56,22 @@ const blogItems = computed(() => [
   { path: '/blog/comments', label: '评论', icon: ChatDotRound, permission: 'svc.inner.blog:view' },
 ].filter((item) => auth.can(item.permission)))
 
+const aiWorkbenchItems = [
+  { path: '/ai-workbench/chat', label: '对话', icon: ChatLineRound },
+  { path: '/ai-workbench/prompts', label: '提示词', icon: MagicStick },
+  { path: '/ai-workbench/providers', label: '模型连接', icon: Connection },
+  { path: '/ai-workbench/dashboard', label: '用量概览', icon: DataAnalysis },
+]
+
 const pageTitle = computed(() => String(route.meta.title || 'Admin Center'))
 const isPermission = computed(() => route.meta.module === 'permission')
 const isGateway = computed(() => route.meta.module === 'gateway')
 const isBlog = computed(() => route.meta.module === 'blog')
+const isAIWorkbench = computed(() => route.meta.module === 'ai-workbench')
 const activeSystem = computed(() => internalSystems.find((system) => system.key === route.meta.module) || null)
-const visibleSystems = computed(() => internalSystems.filter((system) => auth.can(system.requiredPermission)))
-const activeItems = computed(() => isPermission.value ? permissionItems.value : isGateway.value ? gatewayItems.value : isBlog.value ? blogItems.value : [])
+const visibleSystems = computed(() => internalSystems.filter((system) => !system.requiredPermission || auth.can(system.requiredPermission)))
+const activeItems = computed(() => isPermission.value ? permissionItems.value : isGateway.value ? gatewayItems.value : isBlog.value ? blogItems.value : isAIWorkbench.value ? aiWorkbenchItems : [])
+const activeMenu = computed(() => isAIWorkbench.value && route.path.startsWith('/ai-workbench/chat') ? '/ai-workbench/chat' : route.path)
 const gatewayWorkspace = computed<RouteAudience>({
   get: () => audience.value,
   set: (value) => {
@@ -149,7 +158,7 @@ watch(() => route.path, (path) => { if (path === '/blog/reviews') void clearBlog
         <span class="brand-mark"><el-icon><component :is="activeSystem.icon" /></el-icon></span>
         <span><strong>{{ activeSystem.label }}</strong><small>Admin Center</small></span>
       </div>
-      <el-menu :default-active="route.path" router class="side-menu">
+      <el-menu :default-active="activeMenu" router class="side-menu">
         <el-menu-item v-for="item in activeItems" :key="item.path" :index="item.path"><el-icon><component :is="item.icon" /></el-icon><span>{{ item.label }}</span></el-menu-item>
       </el-menu>
       <button class="all-systems-trigger" type="button" @click="openSystemDrawer"><el-icon><Grid /></el-icon><span>所有系统</span></button>
@@ -162,7 +171,7 @@ watch(() => route.path, (path) => { if (path === '/blog/reviews') void clearBlog
           <span class="brand-mark"><el-icon><component :is="activeSystem.icon" /></el-icon></span>
           <span><strong>{{ activeSystem.label }}</strong><small>Admin Center</small></span>
         </div>
-        <el-menu :default-active="route.path" router class="side-menu" @select="navigationDrawerOpen = false">
+        <el-menu :default-active="activeMenu" router class="side-menu" @select="navigationDrawerOpen = false">
           <el-menu-item v-for="item in activeItems" :key="item.path" :index="item.path"><el-icon><component :is="item.icon" /></el-icon><span>{{ item.label }}</span></el-menu-item>
         </el-menu>
         <button class="all-systems-trigger" type="button" @click="openSystemDrawer"><el-icon><Grid /></el-icon><span>所有系统</span></button>
@@ -208,7 +217,7 @@ watch(() => route.path, (path) => { if (path === '/blog/reviews') void clearBlog
           </el-dropdown>
         </div>
       </header>
-      <main :class="['page-content', { 'docs-page-content': route.name === 'inner-api-docs' }]"><RouterView /></main>
+      <main :class="['page-content', { 'docs-page-content': route.name === 'inner-api-docs', 'ai-chat-page-content': route.name === 'ai-workbench-chat' }]"><RouterView /></main>
     </div>
   </div>
 </template>

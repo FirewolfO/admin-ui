@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
-const systems = computed(() => internalSystems.filter((system) => auth.can(system.requiredPermission)))
+const systems = computed(() => internalSystems.filter((system) => !system.requiredPermission || auth.can(system.requiredPermission)))
 </script>
 
 <template>

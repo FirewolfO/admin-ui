@@ -8,7 +8,8 @@
       "@/*": ["./src/*"],
       "@permission/*": ["./src/modules/permission/*"],
       "@gateway/*": ["./src/modules/gateway/*"],
-      "@blog/*": ["./src/modules/blog/*"]
+      "@blog/*": ["./src/modules/blog/*"],
+      "@workbench/*": ["./src/modules/ai-workbench/*"]
     },
     "strict": true,
     "noUnusedLocals": true,

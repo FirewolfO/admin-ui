@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   const permissionTarget = env.VITE_PERMISSION_PROXY_TARGET || 'http://127.0.0.1:8081'
   const gatewayTarget = env.VITE_GATEWAY_ADMIN_PROXY_TARGET || 'http://127.0.0.1:8083'
   const blogTarget = env.VITE_BLOG_PROXY_TARGET || 'http://127.0.0.1:8086'
+  const aiWorkbenchTarget = env.VITE_AI_WORKBENCH_PROXY_TARGET || 'http://127.0.0.1:8087'
   return {
     plugins: [vue()],
     resolve: {
@@ -15,6 +16,7 @@ export default defineConfig(({ mode }) => {
         '@permission': fileURLToPath(new URL('./src/modules/permission', import.meta.url)),
         '@gateway': fileURLToPath(new URL('./src/modules/gateway', import.meta.url)),
         '@blog': fileURLToPath(new URL('./src/modules/blog', import.meta.url)),
+        '@workbench': fileURLToPath(new URL('./src/modules/ai-workbench', import.meta.url)),
       },
     },
     server: {
@@ -34,6 +36,11 @@ export default defineConfig(({ mode }) => {
           target: blogTarget,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/blog/, '/api'),
+        },
+        '/api/ai-workbench': {
+          target: aiWorkbenchTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/ai-workbench/, '/api'),
         },
         '/media': {
           target: blogTarget,

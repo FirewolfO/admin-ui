@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 declare module 'vue-router' {
   interface RouteMeta {
     title?: string
-    module?: 'permission' | 'gateway' | 'blog'
+    module?: 'permission' | 'gateway' | 'blog' | 'ai-workbench'
     permission?: string
     public?: boolean
   }
@@ -41,6 +41,10 @@ const router = createRouter({
 		{ path: 'blog/reviews', name: 'blog-reviews', component: () => import('@blog/views/ReviewsView.vue'), meta: { title: '审核记录', module: 'blog', permission: 'svc.inner.blog:view' } },
         { path: 'blog/categories', name: 'blog-categories', component: () => import('@blog/views/CategoriesView.vue'), meta: { title: '分类管理', module: 'blog', permission: 'svc.inner.blog:manage' } },
         { path: 'blog/comments', name: 'blog-comments', component: () => import('@blog/views/CommentsView.vue'), meta: { title: '评论管理', module: 'blog', permission: 'svc.inner.blog:view' } },
+        { path: 'ai-workbench/dashboard', name: 'ai-workbench-dashboard', component: () => import('@workbench/views/DashboardView.vue'), meta: { title: 'AI 用量概览', module: 'ai-workbench' } },
+        { path: 'ai-workbench/chat/:id?', name: 'ai-workbench-chat', component: () => import('@workbench/views/ChatView.vue'), meta: { title: 'AI 对话', module: 'ai-workbench' } },
+        { path: 'ai-workbench/prompts', name: 'ai-workbench-prompts', component: () => import('@workbench/views/PromptsView.vue'), meta: { title: '我的提示词', module: 'ai-workbench' } },
+        { path: 'ai-workbench/providers', name: 'ai-workbench-providers', component: () => import('@workbench/views/ProvidersView.vue'), meta: { title: '模型连接', module: 'ai-workbench' } },
         { path: 'forbidden', name: 'forbidden', component: () => import('@permission/views/ForbiddenView.vue'), meta: { title: '无权访问' } },
       ],
     },

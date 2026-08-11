@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
-import { Connection, EditPen, Lock } from '@element-plus/icons-vue'
+import { Connection, EditPen, Lock, MagicStick } from '@element-plus/icons-vue'
 
-export type SystemKey = 'permission' | 'gateway' | 'blog'
+export type SystemKey = 'permission' | 'gateway' | 'blog' | 'ai-workbench'
 
 export interface InternalSystem {
   key: SystemKey
@@ -10,7 +10,7 @@ export interface InternalSystem {
   description: string
   entry: string
   icon: Component
-  requiredPermission: string
+  requiredPermission?: string
 }
 
 export const internalSystems: InternalSystem[] = [
@@ -40,5 +40,13 @@ export const internalSystems: InternalSystem[] = [
     entry: '/blog/dashboard',
     icon: EditPen,
     requiredPermission: 'svc.inner.blog:view',
+  },
+  {
+    key: 'ai-workbench',
+    name: 'AI Workbench',
+    label: 'AI 工作台',
+    description: '个人对话、提示词与模型连接',
+    entry: '/ai-workbench/chat',
+    icon: MagicStick,
   },
 ]
