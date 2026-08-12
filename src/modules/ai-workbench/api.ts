@@ -1,6 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { clearSession, getAccessToken, refreshPlatformAccessToken } from '@/api/client'
-import type { Conversation, Dashboard, Message, NewsResult, NewsSummaryResult, PeopleResult, Prompt, PromptInput, Provider, ProviderInput, SocialPost, SyncState, TrackedPerson } from './types'
+import type { Conversation, Dashboard, FrontierCategory, FrontierResult, Message, NewsResult, NewsSummaryResult, PeopleResult, Prompt, PromptInput, Provider, ProviderInput, SocialPost, SyncState, TrackedPerson } from './types'
 
 interface Envelope<T> { code: string; message: string; data: T }
 interface RetryConfig extends InternalAxiosRequestConfig { _retry?: boolean }
@@ -45,4 +45,5 @@ export const workbenchApi = {
   refreshPeople: () => unwrap<SyncState>(api.post('/people/refresh')),
   socialPosts: (personId = '', search = '', favorite = false) => unwrap<SocialPost[]>(api.get('/people/posts', { params: { personId, search, favorite } })),
   favoritePost: (id: string, favorite: boolean) => unwrap<{ favorite: boolean }>(api.put(`/people/posts/${id}/favorite`, { favorite })),
+  frontier: (params: { search?: string; category: FrontierCategory; language?: string; period: string; sort: string }) => unwrap<FrontierResult>(api.get('/frontier', { params })),
 }

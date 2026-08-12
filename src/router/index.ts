@@ -47,6 +47,7 @@ const router = createRouter({
         { path: 'ai-workbench/providers', name: 'ai-workbench-providers', component: () => import('@workbench/views/ProvidersView.vue'), meta: { title: '模型连接', module: 'ai-workbench' } },
         { path: 'ai-workbench/news', name: 'ai-workbench-news', component: () => import('@workbench/views/NewsView.vue'), meta: { title: 'AI 热点', module: 'ai-workbench' } },
         { path: 'ai-workbench/people', name: 'ai-workbench-people', component: () => import('@workbench/views/PeopleView.vue'), meta: { title: '大佬动态', module: 'ai-workbench' } },
+        { path: 'ai-workbench/frontier', name: 'ai-workbench-frontier', component: () => import('@workbench/views/FrontierView.vue'), meta: { title: '前沿项目', module: 'ai-workbench' } },
         { path: 'forbidden', name: 'forbidden', component: () => import('@permission/views/ForbiddenView.vue'), meta: { title: '无权访问' } },
       ],
     },
