@@ -44,4 +44,5 @@ export interface FrontierResult {
   githubTokenSet: boolean
   rateLimit: { limit: number; remaining: number; resetAt?: string }
   stale: boolean
+  lastSuccessAt?: string
 }

@@ -21,6 +21,14 @@ ADMIN_UI_OAUTH_REDIRECT_URI=http://admin.example.com:5178/oauth/callback \
 ./start.sh
 ```
 
+需要退出终端后继续运行时，安装用户级常驻服务：
+
+```bash
+./install-user-service.sh
+```
+
+安装后 Admin UI 会随用户服务管理器自动启动，异常退出时自动重启。可使用 `systemctl --user status admin-ui` 和 `journalctl --user -u admin-ui` 查看状态与日志。
+
 统一平台只通过 Permission OAuth 发起一次 People 登录。Gateway 与 AI Workbench 模块使用同一枚平台访问令牌，不会再次跳转登录；AI Workbench 独立工作台仍通过 People OAuth 登录，并与统一入口共享个人数据。
 
 登录完成后首先进入“所有系统”卡片页。进入系统后左侧只展示当前系统的菜单，可通过侧栏的“所有系统”打开系统抽屉并切换到其他系统。
