@@ -21,6 +21,8 @@ export interface VideoModel {
   durations: number[]
   maxReferences: number
   adaptiveFramesOnly: boolean
+  resolutions: string[]
+  supportsDraft: boolean
 }
 
 export interface VideoTask extends CloudTask {
@@ -32,6 +34,20 @@ export interface VideoTask extends CloudTask {
   duration: number
   favorite: boolean
   message: string
+  options: { resolution?: string; draft?: boolean; generate_audio?: boolean }
+}
+
+export interface VideoInput {
+  requestId: string
+  prompt: string
+  model: string
+  mode: ImageMode
+  images: string[]
+  ratio: string
+  duration: number
+  resolution?: string
+  draft?: boolean
+  audio?: boolean
 }
 
 export const videos = {
@@ -41,11 +57,12 @@ export const videos = {
     data.set('image', file)
     return (await client.post<{ url: string }>('/assets', data)).data.url
   },
-  create: async (input: { requestId: string; prompt: string; model: string; mode: ImageMode; images: string[]; ratio: string; duration: number }) =>
+  create: async (input: VideoInput) =>
     (await client.post<VideoTask>('/tasks', input)).data,
   list: async () => (await client.get<{ items: VideoTask[] }>('/tasks')).data.items,
   favorite: async (id: string, favorite: boolean) =>
     (await client.put<VideoTask>(`/tasks/${id}/favorite`, { favorite })).data,
+  poster: async (id: string) => (await client.get<Blob>(`/tasks/${id}/poster`, { responseType: 'blob' })).data,
   video: async (id: string) => (await client.get<Blob>(`/tasks/${id}/video`, { responseType: 'blob' })).data,
   cloud: async (page: number) => (await client.get<{ items: CloudTask[]; total: number }>('/cloud', { params: { page } })).data,
   import: async (id: string) => (await client.post<VideoTask>(`/cloud/${encodeURIComponent(id)}/import`)).data,

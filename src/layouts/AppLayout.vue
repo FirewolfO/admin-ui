@@ -225,7 +225,7 @@ watch(() => route.path, (path) => { if (path === '/blog/reviews') void clearBlog
           </el-dropdown>
         </div>
       </header>
-      <main :class="['page-content', { 'docs-page-content': route.name === 'inner-api-docs', 'ai-chat-page-content': route.name === 'ai-workbench-chat' }]"><RouterView /></main>
+      <main :class="['page-content', { 'video-studio-content': route.name === 'ai-video-create', 'docs-page-content': route.name === 'inner-api-docs', 'ai-chat-page-content': route.name === 'ai-workbench-chat' }]"><RouterView /></main>
     </div>
   </div>
 </template>
