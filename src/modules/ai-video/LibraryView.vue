@@ -117,8 +117,9 @@ function importCloud(task: CloudTask) {
     </template>
     <template v-else>
       <article v-for="task in shown" :key="task.id" class="work">
-        <div class="info"><strong>{{ task.prompt || (task.image ? '首帧图生成视频' : '方舟历史作品') }}</strong>
-          <small>{{ formatTime(task.created) }} · {{ task.model }}<template v-if="task.duration"> · {{ task.ratio === 'adaptive' ? '跟随首帧' : task.ratio }} · {{ task.duration }} 秒</template></small>
+        <div class="info"><strong>{{ task.prompt || (task.image ? '图片生成视频' : '方舟历史作品') }}</strong>
+          <small>{{ formatTime(task.created) }} · {{ task.model }}<template v-if="task.duration"> · {{ task.ratio === 'adaptive' ? '自适应画幅' : task.ratio }} · {{ task.duration === -1 ? '智能时长' : task.duration + ' 秒' }}</template></small>
+          <small v-if="task.materials?.length">{{ task.materials[0].role === 'reference_image' ? task.materials.length + ' 张参考图' : task.materials.length === 2 ? '首尾帧' : '首帧' }}</small>
           <small v-if="task.ark_id">{{ task.ark_id }}</small>
           <p v-if="task.message">{{ task.message }}</p>
         </div>

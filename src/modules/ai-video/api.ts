@@ -13,10 +13,21 @@ export interface CloudTask {
   created: number
 }
 
+export type ImageMode = 'text' | 'first' | 'frames' | 'references'
+
+export interface VideoModel {
+  id: string
+  label: string
+  durations: number[]
+  maxReferences: number
+  adaptiveFramesOnly: boolean
+}
+
 export interface VideoTask extends CloudTask {
   ark_id: string | null
   prompt: string
   image: string
+  materials: { role: 'first_frame' | 'last_frame' | 'reference_image'; url: string }[]
   ratio: string
   duration: number
   favorite: boolean
@@ -24,13 +35,13 @@ export interface VideoTask extends CloudTask {
 }
 
 export const videos = {
-  settings: async () => (await client.get<{ model: string; cloudHistory: boolean }>('/settings')).data,
+  settings: async () => (await client.get<{ model: string; models: VideoModel[]; ratios: string[]; cloudHistory: boolean }>('/settings')).data,
   upload: async (file: File) => {
     const data = new FormData()
     data.set('image', file)
     return (await client.post<{ url: string }>('/assets', data)).data.url
   },
-  create: async (input: { requestId: string; prompt: string; image: string; ratio: string; duration: number }) =>
+  create: async (input: { requestId: string; prompt: string; model: string; mode: ImageMode; images: string[]; ratio: string; duration: number }) =>
     (await client.post<VideoTask>('/tasks', input)).data,
   list: async () => (await client.get<{ items: VideoTask[] }>('/tasks')).data.items,
   favorite: async (id: string, favorite: boolean) =>
