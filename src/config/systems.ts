@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
-import { Connection, EditPen, Lock, MagicStick } from '@element-plus/icons-vue'
+import { Connection, EditPen, Lock, MagicStick, VideoCamera } from '@element-plus/icons-vue'
 
-export type SystemKey = 'permission' | 'gateway' | 'blog' | 'ai-workbench'
+export type SystemKey = 'permission' | 'gateway' | 'blog' | 'ai-workbench' | 'ai-video'
 
 export interface InternalSystem {
   key: SystemKey
@@ -48,5 +48,13 @@ export const internalSystems: InternalSystem[] = [
     description: '个人对话、提示词与模型连接',
     entry: '/ai-workbench/chat',
     icon: MagicStick,
+  },
+  {
+    key: 'ai-video',
+    name: 'AI Video',
+    label: 'AI 视频创作',
+    description: '生成视频、管理作品与收藏',
+    entry: '/ai-video/create',
+    icon: VideoCamera,
   },
 ]

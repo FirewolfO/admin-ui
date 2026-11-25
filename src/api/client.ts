@@ -1,4 +1,4 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
 import type { TokenResponse } from '@permission/types'
 
 export const API_BASE_URL = import.meta.env.VITE_PERMISSION_API_BASE_URL || '/api/permission/v1'
@@ -24,12 +24,6 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-api.interceptors.request.use((config) => {
-  const token = getAccessToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-
 let refreshPromise: Promise<string> | null = null
 
 export async function refreshPlatformAccessToken(): Promise<string> {
@@ -46,24 +40,35 @@ async function refreshAccessToken() {
   return session.accessToken
 }
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError<ApiEnvelope<unknown>>) => {
-    const original = error.config as RetryConfig | undefined
-    const isAuthEndpoint = original?.url?.includes('/auth/oauth/') || original?.url?.includes('/auth/refresh')
-    if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint) {
-      original._retry = true
-      try {
-        original.headers.Authorization = `Bearer ${await refreshPlatformAccessToken()}`
-        return api(original)
-      } catch {
-        clearSession()
-        window.location.assign(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+export function usePlatformSession(client: AxiosInstance) {
+  client.interceptors.request.use((config) => {
+    const token = getAccessToken()
+    if (token) config.headers.Authorization = `Bearer ${token}`
+    return config
+  })
+
+  client.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError<ApiEnvelope<unknown>>) => {
+      const original = error.config as RetryConfig | undefined
+      const isAuthEndpoint = original?.url?.includes('/auth/oauth/') || original?.url?.includes('/auth/refresh')
+      if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint) {
+        original._retry = true
+        try {
+          original.headers.Authorization = `Bearer ${await refreshPlatformAccessToken()}`
+          return client(original)
+        } catch {
+          clearSession()
+          window.location.assign(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+        }
       }
-    }
-    return Promise.reject(error)
-  },
-)
+      return Promise.reject(error)
+    },
+  )
+  return client
+}
+
+usePlatformSession(api)
 
 export function saveSession(session: TokenResponse) {
   sessionStorage.setItem(accessTokenKey, session.accessToken)

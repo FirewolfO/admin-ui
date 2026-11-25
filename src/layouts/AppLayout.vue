@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
 import {
   Bell, ChatDotRound, ChatLineRound, Close, CollectionTag, Compass, Connection, DataAnalysis, DataBoard, Document, EditPen, Expand, Grid, Key, Link, Lock, MagicStick, Menu as MenuIcon,
-  Operation, Select, Setting, SetUp, SwitchButton, TrendCharts, UserFilled,
+  Operation, Select, Setting, SetUp, SwitchButton, TrendCharts, UserFilled, VideoCamera,
 } from '@element-plus/icons-vue'
 import { apiMessage } from '@/api/client'
 import { internalSystems } from '@/config/systems'
@@ -56,6 +56,11 @@ const blogItems = computed(() => [
   { path: '/blog/comments', label: '评论', icon: ChatDotRound, permission: 'svc.inner.blog:view' },
 ].filter((item) => auth.can(item.permission)))
 
+const aiVideoItems = [
+  { path: '/ai-video/create', label: '视频创作', icon: VideoCamera },
+  { path: '/ai-video/library', label: '我的作品', icon: CollectionTag },
+]
+
 const aiWorkbenchItems = [
   { path: '/ai-workbench/chat', label: '对话', icon: ChatLineRound },
   { path: '/ai-workbench/news', label: 'AI 热点', icon: TrendCharts },
@@ -73,7 +78,7 @@ const isBlog = computed(() => route.meta.module === 'blog')
 const isAIWorkbench = computed(() => route.meta.module === 'ai-workbench')
 const activeSystem = computed(() => internalSystems.find((system) => system.key === route.meta.module) || null)
 const visibleSystems = computed(() => internalSystems.filter((system) => !system.requiredPermission || auth.can(system.requiredPermission)))
-const activeItems = computed(() => isPermission.value ? permissionItems.value : isGateway.value ? gatewayItems.value : isBlog.value ? blogItems.value : isAIWorkbench.value ? aiWorkbenchItems : [])
+const activeItems = computed(() => isPermission.value ? permissionItems.value : isGateway.value ? gatewayItems.value : isBlog.value ? blogItems.value : isAIWorkbench.value ? aiWorkbenchItems : route.meta.module === 'ai-video' ? aiVideoItems : [])
 const activeMenu = computed(() => isAIWorkbench.value && route.path.startsWith('/ai-workbench/chat') ? '/ai-workbench/chat' : route.path)
 const gatewayWorkspace = computed<RouteAudience>({
   get: () => audience.value,

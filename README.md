@@ -1,6 +1,6 @@
 # Admin UI
 
-内部系统统一管理入口。当前将 Permission、Gateway、Blog 与 AI Workbench 作为原生业务模块集成到同一个 Vue 应用中，并通过 Permission 后端只完成一次 People OAuth 登录。
+内部系统统一管理入口。当前将 Permission、Gateway、Blog、AI Workbench 与 AI 视频创作作为原生业务模块集成到同一个 Vue 应用中，并通过 Permission 后端只完成一次 People OAuth 登录。
 
 ## 启动
 
@@ -12,6 +12,8 @@ npm install
 ```
 
 默认地址为 `http://10.251.237.216:5178`，People 登录地址为 `http://10.251.237.216:5177`。Permission API 代理到 `http://127.0.0.1:8081`，Gateway Admin API 代理到 `http://127.0.0.1:8083`，AI Workbench API 代理到 `http://127.0.0.1:8087`。
+
+AI 视频创作入口为 `/ai-video/create`，作品库为 `/ai-video/library`。请先按同级 `ai-video/README.md` 启动视频服务，默认代理目标为 `http://127.0.0.1:8091`，可通过 `VITE_AI_VIDEO_PROXY_TARGET` 覆盖。
 
 所有启动配置都可以通过环境变量覆盖：
 

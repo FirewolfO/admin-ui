@@ -364,6 +364,7 @@ code { padding: 2px 5px; color: var(--theme-primary-dark); background: var(--the
 
 /* Blog module */
 .system-blog { color: #9b4f43; background: #f8e8e5; }
+.system-ai-video { color: #225c83; background: #e3f1fa; }
 .system-ai-workbench { color: #765a92; background: #f0eaf5; }
 .blog-page { display: grid; gap: 18px; }
 .blog-metrics { grid-template-columns: repeat(5, minmax(140px, 1fr)); }

@@ -42,6 +42,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/ai-workbench/, '/api'),
         },
+        '/api/ai-video': {
+          target: env.VITE_AI_VIDEO_PROXY_TARGET || 'http://127.0.0.1:8091',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/ai-video/, '/api'),
+        },
         '/media': {
           target: blogTarget,
           changeOrigin: true,
