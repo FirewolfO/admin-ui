@@ -112,3 +112,13 @@ export function statusLabel(status: string) {
     succeeded: '已完成', failed: '失败', expired: '已过期', cancelled: '已取消',
   } as Record<string, string>)[status] || status
 }
+
+export const generationStages = [
+  { status: 'submitting', label: '提交' }, { status: 'queued', label: '排队' },
+  { status: 'running', label: '生成' }, { status: 'archiving', label: '保存' },
+  { status: 'succeeded', label: '完成' },
+]
+
+export function isTaskPending(task: CloudTask) {
+  return task.status !== 'succeeded' && generationStages.some(stage => stage.status === task.status)
+}

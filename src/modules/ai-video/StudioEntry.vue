@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { EditPen, RefreshRight } from '@element-plus/icons-vue'
-import { statusLabel, type VideoTask } from './api'
+import { isTaskPending, statusLabel, type VideoTask } from './api'
+import TaskProgress from './TaskProgress.vue'
 import VideoPreview from './VideoPreview.vue'
 
 defineProps<{ task: VideoTask; modelLabel: string; busy: boolean }>()
@@ -16,6 +17,7 @@ defineEmits<{ edit: [task: VideoTask]; regenerate: [task: VideoTask]; updated: [
       <span v-if="task.duration">{{ task.duration > 0 ? task.duration + 's' : '智能时长' }}</span><span v-if="task.options.draft">草稿</span>
     </div>
     <VideoPreview v-if="task.status === 'succeeded'" class="screen" :task="task" @updated="$emit('updated', $event)" />
+    <TaskProgress v-else-if="isTaskPending(task)" :task="task" />
     <p v-else class="state">{{ statusLabel(task.status) }}<template v-if="task.message"> · {{ task.message }}</template></p>
     <div class="actions" v-if="task.prompt || task.materials.length">
       <button type="button" :disabled="busy" @click="$emit('edit',task)"><el-icon><EditPen /></el-icon>编辑提示</button>
@@ -24,7 +26,7 @@ defineEmits<{ edit: [task: VideoTask]; regenerate: [task: VideoTask]; updated: [
   </article>
 </template>
 <style scoped>
-.entry { margin:0 0 28px; color:#efeff1; overflow-wrap:anywhere; }
+.entry { margin:0 0 28px; color:#efeff1; overflow-wrap:anywhere; --progress-muted:#b0b0b8; --progress-track:#3b3b43; --progress-accent:#b5c9fa; }
 time,.state { color:#a3a3ab; font-size:13px; }
 .caption { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 0; margin:9px 0 13px; }
 .caption strong { font-weight:500; font-size:15px; white-space:pre-wrap; margin-right:10px; }

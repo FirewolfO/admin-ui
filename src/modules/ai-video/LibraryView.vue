@@ -6,7 +6,8 @@ import { ElMessage } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import VideoPreview from './VideoPreview.vue'
-import { downloadVideo, statusLabel, videos, type VideoTask, type CloudTask } from './api'
+import TaskProgress from './TaskProgress.vue'
+import { downloadVideo, isTaskPending, statusLabel, videos, type VideoTask, type CloudTask } from './api'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -35,11 +36,13 @@ const shown = computed(() => tab.value === 'favorites' ? items.value.filter(t =>
 const canImport = computed(() => auth.can('*'))
 let generation = 0
 let timer = 0
+let fetching = false
 
 const formatTime = (seconds: number) => new Date(seconds * 1000).toLocaleString('zh-CN', { hour12: false })
 
 async function load(quiet = false) {
   const version = ++generation
+  fetching = true
   loading.value = !quiet
   try {
     if (tab.value === 'cloud') {
@@ -54,21 +57,28 @@ async function load(quiet = false) {
     }
     error.value = ''
   } catch (e) { if (version === generation) error.value = apiMessage(e, '任务加载失败') }
-  finally { if (version === generation) loading.value = false }
+  finally {
+    if (version === generation) {
+      fetching = false
+      loading.value = false
+    }
+  }
 }
 watch([tab, page], () => {
   playing.value = false
   items.value = []
   void load()
 })
+function refreshPending() {
+  if (!document.hidden && !fetching && !working.value && tab.value !== 'cloud' &&
+      (error.value || items.value.some(isTaskPending))) void load(true)
+}
 onMounted(() => {
   void load()
-  timer = window.setInterval(() => {
-    if (!document.hidden && !loading.value && !working.value && tab.value !== 'cloud' &&
-      (error.value || items.value.some(t => ['submitting', 'queued', 'running', 'archiving'].includes(t.status)))) void load(true)
-  }, 8000)
+  document.addEventListener('visibilitychange', refreshPending)
+  timer = window.setInterval(refreshPending, 8000)
 })
-onBeforeUnmount(() => { ++generation; clearInterval(timer) })
+onBeforeUnmount(() => { ++generation; clearInterval(timer); document.removeEventListener('visibilitychange', refreshPending) })
 async function act(id: string, action: () => Promise<void>) {
   if (working.value) return
   working.value = id
@@ -81,6 +91,7 @@ function favorite(task: VideoTask) {
 }
 function updateTask(task: VideoTask) {
   ++generation
+  fetching = false
   loading.value = false
   if (selected.value?.id === task.id) selected.value = task
   items.value = items.value.map(item => item.id === task.id ? task : item)
@@ -139,9 +150,10 @@ function importCloud(task: CloudTask) {
           <small>{{ formatTime(task.created) }} · {{ task.model }}<template v-if="task.duration"> · {{ task.ratio === 'adaptive' ? '自适应画幅' : task.ratio }} · {{ task.duration === -1 ? '智能时长' : task.duration + ' 秒' }}</template></small>
           <small v-if="task.materials?.length">{{ task.materials[0].role === 'reference_image' ? task.materials.length + ' 张参考图' : task.materials.length === 2 ? '首尾帧' : '首帧' }}</small>
           <small v-if="task.ark_id">{{ task.ark_id }}</small>
-          <p v-if="task.message">{{ task.message }}</p>
+          <p v-if="task.message && !isTaskPending(task)">{{ task.message }}</p>
         </div>
-        <el-tag :type="task.status === 'succeeded' ? 'success' : task.status === 'failed' ? 'danger' : 'info'">{{ statusLabel(task.status) }}</el-tag>
+        <TaskProgress v-if="isTaskPending(task)" :task="task" />
+        <el-tag v-else :type="task.status === 'succeeded' ? 'success' : task.status === 'failed' ? 'danger' : 'info'">{{ statusLabel(task.status) }}</el-tag>
         <div v-if="task.status === 'succeeded'" class="actions">
           <el-button :icon="VideoPlay" :disabled="!!working" @click="openVideo(task, false)">预览</el-button>
           <el-button :icon="Download" :disabled="!!working" @click="openVideo(task, true)">下载</el-button>

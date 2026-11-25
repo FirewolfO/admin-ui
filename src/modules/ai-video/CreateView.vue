@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, Star, VideoCamera } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { apiMessage } from '@/api/client'
-import { videos, type ImageMode, type VideoModel, type VideoTask } from './api'
+import { isTaskPending, videos, type ImageMode, type VideoModel, type VideoTask } from './api'
 import AssetTray from './AssetTray.vue'
 import StudioEntry from './StudioEntry.vue'
 
@@ -64,7 +64,7 @@ const invalid = computed(() => {
 })
 const ready = computed(() => !!model.value && !busy.value && !invalid.value && (actualMode.value !== 'text' || !!prompt.value.trim()))
 const oldestFirst = computed(() => tasks.value.slice().reverse())
-const hasPending = computed(() => tasks.value.some(t => ['queued','running','submitting','archiving'].includes(t.status)))
+const hasPending = computed(() => tasks.value.some(isTaskPending))
 let timer = 0
 let historyVersion = 0
 let attempt: { signature: string; ids: string[]; next: number } | undefined
@@ -102,6 +102,7 @@ async function loadSettings() {
 function toBottom() { if (feed.value) feed.value.scrollTop = feed.value.scrollHeight }
 async function loadHistory(scroll = false) {
   const version = ++historyVersion
+  loadingHistory.value = true
   try {
     const items = await videos.list()
     if (version !== historyVersion) return
@@ -109,18 +110,33 @@ async function loadHistory(scroll = false) {
     historyError.value = ''
     if (scroll) { await nextTick(); toBottom() }
   } catch (e) { if (version === historyVersion) historyError.value = apiMessage(e,'加载记录失败') }
-  finally { loadingHistory.value = false }
+  finally { if (version === historyVersion) loadingHistory.value = false }
+}
+function refreshPending() {
+  if (!document.hidden && !loadingHistory.value && (hasPending.value || historyError.value)) void loadHistory()
 }
 onMounted(() => {
   void loadSettings()
   void loadHistory(true)
   document.addEventListener('pointerdown',outside)
-  timer = window.setInterval(() => { if (!document.hidden && (hasPending.value || historyError.value)) void loadHistory() }, 8000)
+  document.addEventListener('visibilitychange', refreshPending)
+  timer = window.setInterval(refreshPending, 8000)
 })
-onBeforeUnmount(() => { ++historyVersion; clearInterval(timer); document.removeEventListener('pointerdown',outside) })
+onBeforeUnmount(() => {
+  ++historyVersion
+  clearInterval(timer)
+  document.removeEventListener('pointerdown',outside)
+  document.removeEventListener('visibilitychange', refreshPending)
+})
 function updateTask(task: VideoTask) {
   ++historyVersion
-  tasks.value = tasks.value.map(item => item.id === task.id ? task : item)
+  loadingHistory.value = false
+  if (tasks.value.some(item => item.id === task.id)) {
+    tasks.value = tasks.value.map(item => item.id === task.id ? task : item)
+  } else {
+    tasks.value.unshift(task)
+    nextTick(toBottom)
+  }
 }
 function updatePhotos(urls: string[]) {
   photos.value = urls
@@ -173,6 +189,7 @@ async function submit() {
       const index = attempt.next
       progress.value = attempt.ids.length === 1 ? '提交中' : `提交 ${index + 1}/${attempt.ids.length}`
       const task = await videos.create({...input,requestId:attempt.ids[index]})
+      updateTask(task)
       if (task.status === 'failed' || task.status === 'unknown') {
         if (task.status === 'failed') attempt.ids[index] = newRequestId()
         throw new Error(task.message || '方舟未确认生成任务')
