@@ -50,20 +50,49 @@ export interface VideoInput {
   audio?: boolean
 }
 
+export interface AssetItem {
+  kind: 'folder' | 'image'
+  name: string
+  path: string
+  canDelete?: boolean
+  sha?: string
+  url?: string
+}
+
+async function mediaUrl(id: string, kind: 'preview' | 'download') {
+  const path = `/tasks/${encodeURIComponent(id)}`
+  const { data } = await client.post<{ resource: string }>(path + '/media-session', { kind }, { timeout: 15_000, withCredentials: true })
+  return client.getUri({ url: path + '/' + data.resource })
+}
+
+export async function downloadVideo(id: string) {
+  const link = document.createElement('a')
+  link.href = await mediaUrl(id, 'download')
+  link.download = `ai-video-${id}.mp4`
+  document.body.append(link)
+  link.click()
+  link.remove()
+}
+
 export const videos = {
   settings: async () => (await client.get<{ model: string; models: VideoModel[]; ratios: string[]; cloudHistory: boolean }>('/settings')).data,
-  upload: async (file: File) => {
+  upload: async (file: File, directory?: string) => {
     const data = new FormData()
     data.set('image', file)
+    if (directory !== undefined) data.set('directory', directory)
     return (await client.post<{ url: string }>('/assets', data)).data.url
   },
+  assets: async (directory: string, refresh = false) =>
+    (await client.get<{ directory: string; items: AssetItem[] }>('/assets', { params: { directory, refresh: refresh ? 1 : undefined } })).data,
+  createFolder: async (directory: string, name: string) => client.post('/assets/folders', { directory, name }),
+  deleteImage: async (item: AssetItem) => client.delete('/assets', { data: { path: item.path, sha: item.sha } }),
   create: async (input: VideoInput) =>
     (await client.post<VideoTask>('/tasks', input)).data,
   list: async () => (await client.get<{ items: VideoTask[] }>('/tasks')).data.items,
   favorite: async (id: string, favorite: boolean) =>
     (await client.put<VideoTask>(`/tasks/${id}/favorite`, { favorite })).data,
   poster: async (id: string) => (await client.get<Blob>(`/tasks/${id}/poster`, { responseType: 'blob' })).data,
-  video: async (id: string) => (await client.get<Blob>(`/tasks/${id}/video`, { responseType: 'blob' })).data,
+  preview: (id: string) => mediaUrl(id, 'preview'),
   cloud: async (page: number) => (await client.get<{ items: CloudTask[]; total: number }>('/cloud', { params: { page } })).data,
   import: async (id: string) => (await client.post<VideoTask>(`/cloud/${encodeURIComponent(id)}/import`)).data,
 }

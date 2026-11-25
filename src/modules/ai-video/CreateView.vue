@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Clock, Film, FullScreen, MagicStick, Operation, VideoCamera } from '@element-plus/icons-vue'
+import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, VideoCamera } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { videos, type ImageMode, type VideoModel, type VideoTask } from './api'
@@ -117,6 +117,10 @@ onMounted(() => {
   timer = window.setInterval(() => { if (!document.hidden && (hasPending.value || historyError.value)) void loadHistory() }, 8000)
 })
 onBeforeUnmount(() => { ++historyVersion; clearInterval(timer); document.removeEventListener('pointerdown',outside) })
+function updateTask(task: VideoTask) {
+  ++historyVersion
+  tasks.value = tasks.value.map(item => item.id === task.id ? task : item)
+}
 function updatePhotos(urls: string[]) {
   photos.value = urls
   if (mode.value === 'text' && urls.length) mode.value = 'auto'
@@ -187,11 +191,12 @@ async function submit() {
 <template>
   <section class="studio" aria-label="视频创作工作区">
     <header class="studio-top">
+      <RouterLink to="/ai-video/assets"><el-icon><FolderOpened /></el-icon>素材库</RouterLink>
       <RouterLink to="/ai-video/library"><el-icon><Clock /></el-icon>生成历史</RouterLink></header>
     <section ref="feed" class="feed" aria-label="生成记录">
       <div v-if="historyError" class="notice">{{ historyError }} <button type="button" @click="loadHistory()">重试</button></div>
       <StudioEntry v-for="task in oldestFirst" :key="task.id" :task="task" :busy="busy || !model"
-        :model-label="models.find(m => m.id === task.model)?.label || task.model" @edit="loadTask" @regenerate="regenerate" />
+        :model-label="models.find(m => m.id === task.model)?.label || task.model" @updated="updateTask" @edit="loadTask" @regenerate="regenerate" />
       <div v-if="!tasks.length && !historyError" class="empty"><el-icon><Film /></el-icon><p>{{ loadingHistory ? '正在加载生成记录…' : '暂无生成记录' }}</p></div>
     </section>
     <form class="composer" :class="{ enlarged: expanded }" @submit.prevent="submit" @keydown.esc="panel ? closePanel() : expanded = false">
@@ -263,7 +268,7 @@ async function submit() {
 </template>
 <style scoped>
 .studio { height:100%; min-height:0; display:flex; flex-direction:column; color:#f2f2f5; background:#09090b; color-scheme:dark; }
-.studio-top { display:flex; align-items:center; justify-content:flex-end; padding:12px clamp(14px,2vw,30px); border-bottom:1px solid #232326; }
+.studio-top { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:12px clamp(14px,2vw,30px); border-bottom:1px solid #232326; }
 .studio-top a,.generate,.pill { display:inline-flex; align-items:center; gap:7px; }
 
 .studio-top a { font-size:14px; text-decoration:none; color:#dedee3; background:#222225; padding:7px 13px; border-radius:20px; }

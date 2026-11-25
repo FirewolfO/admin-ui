@@ -48,6 +48,7 @@ const router = createRouter({
         { path: 'ai-workbench/news', name: 'ai-workbench-news', component: () => import('@workbench/views/NewsView.vue'), meta: { title: 'AI 热点', module: 'ai-workbench' } },
         { path: 'ai-workbench/people', name: 'ai-workbench-people', component: () => import('@workbench/views/PeopleView.vue'), meta: { title: '大佬动态', module: 'ai-workbench' } },
         { path: 'ai-workbench/frontier', name: 'ai-workbench-frontier', component: () => import('@workbench/views/FrontierView.vue'), meta: { title: '前沿项目', module: 'ai-workbench' } },
+        { path: 'ai-video/assets', name: 'ai-video-assets', component: () => import('@/modules/ai-video/AssetBrowser.vue'), meta: { title: '素材库', module: 'ai-video' } },
         { path: 'ai-video/create', name: 'ai-video-create', component: () => import('@/modules/ai-video/CreateView.vue'), meta: { title: '视频创作', module: 'ai-video' } },
         { path: 'ai-video/library', name: 'ai-video-library', component: () => import('@/modules/ai-video/LibraryView.vue'), meta: { title: '我的作品', module: 'ai-video' } },
         { path: 'forbidden', name: 'forbidden', component: () => import('@permission/views/ForbiddenView.vue'), meta: { title: '无权访问' } },

@@ -5,7 +5,8 @@ import { Download, Refresh, Star, StarFilled, VideoPlay } from '@element-plus/ic
 import { ElMessage } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
-import { statusLabel, videos, type VideoTask, type CloudTask } from './api'
+import VideoPreview from './VideoPreview.vue'
+import { downloadVideo, statusLabel, videos, type VideoTask, type CloudTask } from './api'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -18,12 +19,12 @@ const loading = ref(false)
 const error = ref('')
 const working = ref('')
 const playing = ref(false)
-const playbackUrl = ref('')
+const selected = ref<VideoTask>()
 const shown = computed(() => tab.value === 'favorites' ? items.value.filter(t => t.favorite) : items.value)
 const canImport = computed(() => auth.can('*'))
 let generation = 0
 let timer = 0
-let active = true
+
 const formatTime = (seconds: number) => new Date(seconds * 1000).toLocaleString('zh-CN', { hour12: false })
 
 async function load(quiet = false) {
@@ -52,11 +53,7 @@ onMounted(() => {
       (error.value || items.value.some(t => ['submitting', 'queued', 'running', 'archiving'].includes(t.status)))) void load(true)
   }, 8000)
 })
-function clearPlayer() {
-  if (playbackUrl.value) URL.revokeObjectURL(playbackUrl.value)
-  playbackUrl.value = ''
-}
-onBeforeUnmount(() => { active = false; ++generation; clearInterval(timer); clearPlayer() })
+onBeforeUnmount(() => { ++generation; clearInterval(timer) })
 async function act(id: string, action: () => Promise<void>) {
   if (working.value) return
   working.value = id
@@ -67,23 +64,15 @@ async function act(id: string, action: () => Promise<void>) {
 function favorite(task: VideoTask) {
   void act(task.id, async () => { await videos.favorite(task.id, !task.favorite); await load(true) })
 }
+function updateTask(task: VideoTask) {
+  ++generation
+  loading.value = false
+  selected.value = task
+  items.value = items.value.map(item => item.id === task.id ? task : item)
+}
 function openVideo(task: VideoTask, download: boolean) {
-  void act(task.id, async () => {
-    const blob = await videos.video(task.id)
-    if (!active) return
-    const url = URL.createObjectURL(blob)
-    if (download) {
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `ai-video-${task.ark_id || task.id}.mp4`
-      a.click()
-      window.setTimeout(() => URL.revokeObjectURL(url), 30_000)
-    } else {
-      clearPlayer()
-      playbackUrl.value = url
-      playing.value = true
-    }
-  })
+  if (download) void act(task.id, () => downloadVideo(task.id))
+  else { selected.value = task; playing.value = true }
 }
 function importCloud(task: CloudTask) {
   void act(task.id, async () => {
@@ -134,8 +123,8 @@ function importCloud(task: CloudTask) {
         <el-button v-if="tab === 'all'" type="primary" @click="router.push('/ai-video/create')">创作第一段视频</el-button>
       </el-empty>
     </template>
-    <el-dialog v-model="playing" title="成片预览" width="min(850px, 95vw)" destroy-on-close @closed="clearPlayer">
-      <video v-if="playbackUrl" :src="playbackUrl" controls autoplay playsinline />
+    <el-dialog v-model="playing" title="成片预览" width="min(850px, 95vw)" destroy-on-close @closed="selected = undefined">
+      <VideoPreview v-if="playing && selected" :key="selected.id" :task="selected" autoplay @updated="updateTask" />
     </el-dialog>
   </section>
 </template>
@@ -152,5 +141,4 @@ function importCloud(task: CloudTask) {
 .info p { margin:8px 0 0; }
 .actions { gap:6px; }
 .actions .el-button { margin:0; }
-video { display:block; width:100%; max-height:70vh; background:#101514; }
 </style>

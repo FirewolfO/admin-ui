@@ -1,13 +1,10 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import proxies from './deploy/proxies.json'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const permissionTarget = env.VITE_PERMISSION_PROXY_TARGET || 'http://127.0.0.1:8081'
-  const gatewayTarget = env.VITE_GATEWAY_ADMIN_PROXY_TARGET || 'http://127.0.0.1:8083'
-  const blogTarget = env.VITE_BLOG_PROXY_TARGET || 'http://127.0.0.1:8086'
-  const aiWorkbenchTarget = env.VITE_AI_WORKBENCH_PROXY_TARGET || 'http://127.0.0.1:8087'
   return {
     plugins: [vue()],
     resolve: {
@@ -21,37 +18,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5178,
-      proxy: {
-        '/api/permission': {
-          target: permissionTarget,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/permission/, '/api'),
-        },
-        '/api/gateway-admin': {
-          target: gatewayTarget,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/gateway-admin/, '/api'),
-        },
-        '/api/blog': {
-          target: blogTarget,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/blog/, '/api'),
-        },
-        '/api/ai-workbench': {
-          target: aiWorkbenchTarget,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/ai-workbench/, '/api'),
-        },
-        '/api/ai-video': {
-          target: env.VITE_AI_VIDEO_PROXY_TARGET || 'http://127.0.0.1:8091',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\/ai-video/, '/api'),
-        },
-        '/media': {
-          target: blogTarget,
-          changeOrigin: true,
-        },
-      },
+      proxy: Object.fromEntries(proxies.map(route => [route.prefix, {
+        target: env[route.env] || route.default,
+        changeOrigin: true,
+        rewrite: (path: string) => route.upstream + path.slice(route.prefix.length),
+      }])),
     },
   }
 })

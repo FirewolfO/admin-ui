@@ -13,7 +13,7 @@ npm install
 
 默认地址为 `http://10.251.237.216:5178`，People 登录地址为 `http://10.251.237.216:5177`。Permission API 代理到 `http://127.0.0.1:8081`，Gateway Admin API 代理到 `http://127.0.0.1:8083`，AI Workbench API 代理到 `http://127.0.0.1:8087`。
 
-AI 视频创作入口为 `/ai-video/create`，作品库为 `/ai-video/library`。请先按同级 `ai-video/README.md` 启动视频服务，默认代理目标为 `http://127.0.0.1:8091`，可通过 `VITE_AI_VIDEO_PROXY_TARGET` 覆盖。
+AI 视频创作入口为 `/ai-video/create`，作品库为 `/ai-video/library`，图片素材库为 `/ai-video/assets`。请先按同级 `ai-video/README.md` 启动视频服务，默认代理目标为 `http://127.0.0.1:8091`，可通过 `VITE_AI_VIDEO_PROXY_TARGET` 覆盖。
 
 所有启动配置都可以通过环境变量覆盖：
 
@@ -29,7 +29,7 @@ ADMIN_UI_OAUTH_REDIRECT_URI=http://admin.example.com:5178/oauth/callback \
 ./install-user-service.sh
 ```
 
-安装后 Admin UI 会随用户服务管理器自动启动，异常退出时自动重启。可使用 `systemctl --user status admin-ui` 和 `journalctl --user -u admin-ui` 查看状态与日志。
+常驻服务启动时使用该服务的 VITE_* 配置构建前端，提供压缩静态资源并代理 API。开发时仍可通过 ./start.sh 启用热更新。安装后 Admin UI 会随用户服务管理器自动启动，异常退出时自动重启。可使用 `systemctl --user status admin-ui` 和 `journalctl --user -u admin-ui` 查看状态与日志。
 
 统一平台只通过 Permission OAuth 发起一次 People 登录。Gateway 与 AI Workbench 模块使用同一枚平台访问令牌，不会再次跳转登录；AI Workbench 独立工作台仍通过 People OAuth 登录，并与统一入口共享个人数据。
 

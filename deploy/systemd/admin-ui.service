@@ -17,7 +17,8 @@ Environment=VITE_AI_WORKBENCH_PROXY_TARGET=http://127.0.0.1:8087
 Environment=VITE_PEOPLE_LOGIN_ORIGIN=http://10.251.237.216:5177
 Environment=VITE_PEOPLE_UI_URL=http://10.251.237.216:5177/profile
 Environment=VITE_OAUTH_REDIRECT_URI=http://10.251.237.216:5178/oauth/callback
-ExecStart=/usr/bin/node %h/code/admin-ui/node_modules/vite/bin/vite.js --host 0.0.0.0 --port 5178 --strictPort
+ExecStartPre=/usr/bin/node %h/code/admin-ui/node_modules/vite/bin/vite.js build
+ExecStart=/usr/bin/node %h/code/admin-ui/deploy/serve.mjs
 Restart=always
 RestartSec=3
 

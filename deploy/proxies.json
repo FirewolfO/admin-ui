@@ -1,0 +1,8 @@
+[
+  { "prefix": "/api/permission", "upstream": "/api", "env": "VITE_PERMISSION_PROXY_TARGET", "default": "http://127.0.0.1:8081" },
+  { "prefix": "/api/gateway-admin", "upstream": "/api", "env": "VITE_GATEWAY_ADMIN_PROXY_TARGET", "default": "http://127.0.0.1:8083" },
+  { "prefix": "/api/blog", "upstream": "/api", "env": "VITE_BLOG_PROXY_TARGET", "default": "http://127.0.0.1:8086" },
+  { "prefix": "/api/ai-workbench", "upstream": "/api", "env": "VITE_AI_WORKBENCH_PROXY_TARGET", "default": "http://127.0.0.1:8087" },
+  { "prefix": "/api/ai-video", "upstream": "/api", "env": "VITE_AI_VIDEO_PROXY_TARGET", "default": "http://127.0.0.1:8091" },
+  { "prefix": "/media", "upstream": "/media", "env": "VITE_BLOG_PROXY_TARGET", "default": "http://127.0.0.1:8086" }
+]

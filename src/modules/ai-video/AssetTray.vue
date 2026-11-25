@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
+import { defineAsyncComponent, computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
 import { ArrowLeft, ArrowRight, Close, CopyDocument, Plus, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { copyText } from '@permission/utils/clipboard'
 import { videos, type ImageMode } from './api'
 
+const AssetBrowser = defineAsyncComponent(() => import('./AssetBrowser.vue'))
+const browsing = ref(false)
 const props = defineProps<{ urls: string[]; mode: ImageMode | 'auto'; limit: number; disabled: boolean }>()
 const emit = defineEmits<{ change: [urls: string[]]; publishing: [active: boolean] }>()
 const expanded = ref(false)
@@ -55,6 +57,7 @@ onMounted(() => document.addEventListener('pointerdown', outside))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
 function edit(index: number) {
   if (props.disabled || progress.value) return
+  browsing.value = false
   editor.value = index
   link.value = index < 0 ? '' : props.urls[index]
   error.value = ''
@@ -150,12 +153,14 @@ async function copy() {
       </div>
       <button type="button" class="fold" @click="collapse(true)" aria-label="收起素材"><el-icon><Close /></el-icon></button>
     </div>
-    <dialog ref="dialog" class="asset-dialog" @cancel="e => { if (progress) e.preventDefault() }" @close="collapse()">
+    <dialog ref="dialog" class="asset-dialog" @cancel="e => { if (progress) e.preventDefault() }" @close="browsing = false; collapse()">
       <header><strong>{{ editor < 0 ? '添加素材' : '编辑' + name(editor) }}</strong>
         <button type="button" :disabled="!!progress" @click="dialog?.close()" aria-label="关闭素材窗口">×</button></header>
       <input type="file" ref="input" accept="image/png,image/jpeg,image/webp" :multiple="editor < 0 && limit > 1" hidden @change="upload" />
       <button type="button" class="upload" :disabled="!!progress" @click="input?.click()"><el-icon><Upload /></el-icon>{{ progress || '选择图片并上传' }}</button>
       <p>上传至公开的 FirewolfO/images 仓库。每张 PNG、JPEG 或 WebP 小于 30 MB。</p>
+      <button type="button" :disabled="!!progress" :aria-expanded="browsing" @click="browsing = !browsing">{{ browsing ? '收起素材库' : '从素材库选择' }}</button>
+      <AssetBrowser v-if="browsing" picker @choose="url => { save([url]); dialog?.close() }" />
       <label for="asset-links">仓库图片地址</label>
       <textarea id="asset-links" v-model="link" :disabled="!!progress" rows="3" placeholder="粘贴已有图片地址，每行一个" />
       <p v-if="error" role="alert">{{ error }}</p>
