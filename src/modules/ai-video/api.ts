@@ -54,6 +54,7 @@ export interface AssetItem {
   kind: 'folder' | 'image'
   name: string
   path: string
+  fileCount?: number
   canDelete?: boolean
   sha?: string
   url?: string
@@ -84,10 +85,12 @@ export const videos = {
   },
   assets: async (directory: string, refresh = false) =>
     (await client.get<{ directory: string; items: AssetItem[] }>('/assets', { params: { directory, refresh: refresh ? 1 : undefined } })).data,
+  renameFolder: async (item: AssetItem, name: string) =>
+    client.patch('/assets/folders', { path: item.path, sha: item.sha, name }),
   folders: async () => (await client.get<{ folders: string[] }>('/assets/folders')).data.folders,
   batchAssets: async (action: 'delete' | 'move', selection: AssetItem[], destination: string | null) =>
     (await client.post<{ count: number }>('/assets/batch', {
-      action, items: selection.map(({ path, sha }) => ({ path, sha })),
+      action, items: selection.map(({ kind, path, sha }) => ({ kind, path, sha })),
       ...(action === 'move' ? { destination } : {}),
     })).data.count,
   createFolder: async (directory: string, name: string) => client.post('/assets/folders', { directory, name }),
