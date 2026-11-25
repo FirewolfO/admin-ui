@@ -15,13 +15,22 @@ const mode = ref<ImageMode | 'auto'>('auto')
 const photos = ref<string[]>([])
 const prompt = ref('')
 const ratio = ref('adaptive')
-const duration = ref(5)
+const manualDuration = ref(5)
+const autoDuration = ref(false)
+const duration = computed(() => autoDuration.value ? -1 : manualDuration.value)
+const seconds = computed(() => model.value?.durations.filter(value => value > 0) ?? [])
+// Some custom endpoints offer only a few non-consecutive durations.
+const consecutive = computed(() => seconds.value.every((value, index) => value === seconds.value[0] + index))
+const sliderValue = computed({
+  get: () => consecutive.value ? manualDuration.value : seconds.value.indexOf(manualDuration.value),
+  set: (value: number) => { manualDuration.value = consecutive.value ? value : seconds.value[value] },
+})
 const resolution = ref('720p')
 const draft = ref(false)
 const audio = ref(true)
 const batch = ref(1)
 const expanded = ref(false)
-const panel = ref<'format' | 'advanced' | ''>('')
+const panel = ref<'ratio' | 'resolution' | 'duration' | 'advanced' | ''>('')
 const publishing = ref(false)
 const submitting = ref(false)
 const progress = ref('')
@@ -61,13 +70,24 @@ let attempt: { signature: string; ids: string[]; next: number } | undefined
 
 watch(model, m => {
   if (!m) return
-  if (!m.durations.includes(duration.value)) duration.value = duration.value > Math.max(...m.durations) ? Math.max(...m.durations) : 5
+  panel.value = ''
+  if (seconds.value.length && !seconds.value.includes(manualDuration.value)) {
+    manualDuration.value = seconds.value.reduce((best, value) =>
+      Math.abs(value - manualDuration.value) < Math.abs(best - manualDuration.value) ? value : best)
+  }
+  if (!m.durations.includes(-1)) autoDuration.value = false
   if (!m.resolutions.includes(resolution.value)) resolution.value = m.resolutions.includes('720p') ? '720p' : m.resolutions[0] || ''
   if (!m.supportsDraft) draft.value = false
   if (!m.maxReferences && ['frames','references'].includes(mode.value)) mode.value = 'auto'
 })
 function outside(e: PointerEvent) {
-  if (!tools.value?.contains(e.target as Node)) panel.value = ''
+  const anchor = (e.target as Element).closest('.anchor')
+  if (!anchor || !tools.value?.contains(anchor)) panel.value = ''
+}
+function closePanel() {
+  const trigger = tools.value?.querySelector<HTMLButtonElement>('button[aria-expanded="true"]')
+  panel.value = ''
+  trigger?.focus()
 }
 async function loadSettings() {
   try {
@@ -107,7 +127,9 @@ function loadTask(t: VideoTask) {
   photos.value = t.materials.map(m => m.url)
   mode.value = !photos.value.length ? 'text' : t.materials[0].role === 'reference_image' ? 'references' : photos.value.length === 2 ? 'frames' : 'first'
   prompt.value = t.prompt
-  duration.value = t.duration || 5
+  autoDuration.value = t.duration === -1
+  if (t.duration > 0) manualDuration.value = t.duration
+  else if (!autoDuration.value) manualDuration.value = 5
   ratio.value = t.ratio || 'adaptive'
   resolution.value = t.options.resolution || '720p'
   draft.value = !!t.options.draft
@@ -172,7 +194,7 @@ async function submit() {
         :model-label="models.find(m => m.id === task.model)?.label || task.model" @edit="loadTask" @regenerate="regenerate" />
       <div v-if="!tasks.length && !historyError" class="empty"><el-icon><Film /></el-icon><p>{{ loadingHistory ? '正在加载生成记录…' : '暂无生成记录' }}</p></div>
     </section>
-    <form class="composer" :class="{ enlarged: expanded }" @submit.prevent="submit" @keydown.esc="panel = ''; expanded = false">
+    <form class="composer" :class="{ enlarged: expanded }" @submit.prevent="submit" @keydown.esc="panel ? closePanel() : expanded = false">
       <div v-if="error" class="notice" role="alert">{{ error }} <button v-if="!model" type="button" @click="loadSettings">重试</button></div>
       <div class="writing">
         <AssetTray :urls="mode === 'text' ? [] : photos" :mode="mode" :limit="limit" :disabled="busy || !model"
@@ -190,14 +212,42 @@ async function submit() {
         <label class="pill model"><select v-model="modelId" aria-label="生成模型" :disabled="busy">
           <option v-for="m in models" :key="m.id" :value="m.id">{{ m.label }}</option></select></label>
         <div class="anchor">
-          <button class="pill" type="button" :disabled="busy" :aria-expanded="panel === 'format'" aria-label="画幅、分辨率和时长"
-            @click="panel = panel === 'format' ? '' : 'format'">
-            {{ taskRatio === 'adaptive' ? '自动匹配' : taskRatio }} <template v-if="resolution">│ {{ draft ? '480p' : resolution }}</template> │ {{ duration === -1 ? '智能时长' : duration + 's' }}
+          <button class="pill parameter" type="button" aria-label="选择画幅" :aria-expanded="panel === 'ratio'"
+            :disabled="busy || !model || frameLocked" :title="frameLocked ? '画幅跟随首帧' : '选择画幅'"
+            @click="panel = panel === 'ratio' ? '' : 'ratio'">
+            {{ frameLocked ? '跟随首帧' : ratio === 'adaptive' ? '自动匹配' : ratio }}
           </button>
-          <div v-if="panel === 'format' && model" class="popup">
-            <label>画幅<select v-model="ratio" v-if="!frameLocked" aria-label="画幅"><option v-for="r in ratios" :key="r" :value="r">{{ r === 'adaptive' ? '自动匹配' : r }}</option></select><span v-else>跟随首帧</span></label>
-            <label v-if="model.resolutions.length">分辨率<select v-if="!draft" v-model="resolution" aria-label="分辨率"><option v-for="r in model.resolutions" :key="r">{{ r }}</option></select><span v-else>480p（草稿）</span></label>
-            <label>时长<select v-model="duration" aria-label="视频时长"><option v-for="s in model.durations" :key="s" :value="s">{{ s === -1 ? '智能时长' : s + ' 秒' }}</option></select></label>
+          <div v-if="panel === 'ratio' && !frameLocked" class="popup" role="group" aria-label="画幅选项">
+            <strong>画幅</strong>
+            <div class="choices">
+              <button v-for="r in ratios" :key="r" type="button" :aria-pressed="ratio === r"
+                @click="ratio = r; closePanel()">{{ r === 'adaptive' ? '自动匹配' : r }}</button>
+            </div>
+          </div>
+        </div>
+        <div v-if="model?.resolutions.length" class="anchor">
+          <button class="pill parameter" type="button" aria-label="选择分辨率" :aria-expanded="panel === 'resolution'"
+            :disabled="busy || draft" :title="draft ? '草稿模式固定为 480p' : '选择分辨率'"
+            @click="panel = panel === 'resolution' ? '' : 'resolution'">{{ draft ? '480p' : resolution }}</button>
+          <div v-if="panel === 'resolution' && !draft" class="popup" role="group" aria-label="分辨率选项">
+            <strong>分辨率</strong>
+            <div class="choices">
+              <button v-for="r in model.resolutions" :key="r" type="button" :aria-pressed="resolution === r"
+                @click="resolution = r; closePanel()">{{ r }}</button>
+            </div>
+          </div>
+        </div>
+        <div class="anchor">
+          <button class="pill parameter" type="button" aria-label="调整视频时长" title="调整视频时长"
+            :disabled="busy || !seconds.length" :aria-expanded="panel === 'duration'"
+            @click="panel = panel === 'duration' ? '' : 'duration'">{{ autoDuration ? '智能时长' : duration + 's' }}</button>
+          <div v-if="panel === 'duration' && seconds.length" class="popup duration-popup" role="group" aria-label="时长设置">
+            <label for="video-seconds"><strong>视频时长</strong><output for="video-seconds">{{ autoDuration ? '智能' : duration + ' 秒' }}</output></label>
+            <input id="video-seconds" v-model.number="sliderValue" type="range" :disabled="autoDuration || busy"
+              :min="consecutive ? seconds[0] : 0" :max="consecutive ? seconds[seconds.length - 1] : seconds.length - 1"
+              step="1" :aria-valuetext="manualDuration + ' 秒'" />
+            <div class="bounds" aria-hidden="true"><span>{{ seconds[0] }} 秒</span><span>{{ seconds[seconds.length - 1] }} 秒</span></div>
+            <label v-if="model?.durations.includes(-1)" class="auto-duration">智能时长<input v-model="autoDuration" type="checkbox" /></label>
           </div>
         </div>
         <div v-if="model?.resolutions.length" class="anchor">
@@ -220,7 +270,7 @@ async function submit() {
 .feed { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:24px clamp(16px,2.4vw,36px) 0; scrollbar-color:#404046 transparent; }
 .empty { height:100%; min-height:60px; display:grid; align-content:center; justify-items:center; color:#9c9ca4; }
 .empty .el-icon { font-size:32px; }.empty p { margin:9px 0; font-size:14px; }
-.composer { position:relative; margin:10px clamp(10px,2vw,28px) 16px; padding:13px; border:1px solid #414147; border-radius:16px; background:#19191c; box-shadow:0 12px 42px #0005; }
+.composer { position:relative; container-type:inline-size; margin:10px clamp(10px,2vw,28px) 16px; padding:13px; border:1px solid #414147; border-radius:16px; background:#19191c; box-shadow:0 12px 42px #0005; }
 .writing { display:grid; grid-template-columns:96px minmax(0,1fr) 24px; min-height:103px; align-items:start; margin-bottom:10px; }
 .writing :deep(.asset-zone) { grid-area:1/1; z-index:1; }
 .writing :deep(.asset-zone.spread) { grid-column:1/3; min-height:98px; background:#19191c; }
@@ -238,10 +288,26 @@ select option { color:#eee; background:#27272b; }.pill input,.popup input { acce
 .generate { margin-left:auto; background:#dce3f0; color:#10141a; font-weight:650; gap:6px; }
 .generate:disabled { opacity:.48; }.expand:hover,.pill:hover { color:white; }.generate:not(:disabled):hover { background:white; }
 .anchor { position:relative; }.popup { position:absolute; bottom:calc(100% + 8px); left:0; z-index:4; display:grid; gap:12px; min-width:205px; background:#28282d; border:1px solid #505058; padding:15px; border-radius:12px; box-shadow:0 4px 25px #0007; }
-.popup label { display:flex; align-items:center; justify-content:space-between; gap:14px; font-size:14px; }.popup select { min-width:88px; background:#19191d; border:1px solid #515158; border-radius:5px; padding:4px; }
+.popup label { display:flex; align-items:center; justify-content:space-between; gap:14px; font-size:14px; }
+.parameter { min-width:46px; justify-content:center; }
+.parameter[aria-expanded=true] { background:#34343a; border-color:#787883; }
+.choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.choices button { border:1px solid #52525a; border-radius:7px; background:#202024; color:inherit; padding:7px; font:inherit; font-size:14px; }
+.choices button[aria-pressed=true] { background:#dce3f0; color:#17181c; }
+.duration-popup { min-width:220px; gap:4px; }
+.duration-popup output { font-variant-numeric:tabular-nums; }
+.duration-popup input[type=range] { width:100%; height:28px; margin:2px 0 0; cursor:pointer; }
+.duration-popup input[type=range]:disabled { cursor:default; opacity:.45; }
+.bounds { display:flex; justify-content:space-between; color:#b9b9c2; font-size:12px; }
+.auto-duration { border-top:1px solid #45454c; margin-top:7px; padding-top:10px; }
 .notice { padding:4px 3px 10px; color:#f5c5af; font-size:13px; }
 .notice button { color:inherit; background:none; border:0; text-decoration:underline; }
 .studio :focus-visible { outline:2px solid #b3c7f3; outline-offset:1px; }
+@container (max-width:820px) {
+  .controls { position:relative; }
+  .anchor { position:static; }
+  .popup { left:auto; right:0; }
+}
 @media(max-width:760px) {
   .composer { margin:6px 8px max(8px,env(safe-area-inset-bottom)); padding:10px; }.studio-top { padding:9px 14px; }
   .writing { grid-template-columns:90px minmax(0,1fr) 22px; }.writing textarea { font-size:16px; padding:4px; }
