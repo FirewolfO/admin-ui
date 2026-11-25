@@ -5,7 +5,7 @@ import TaskProgress from './TaskProgress.vue'
 import VideoPreview from './VideoPreview.vue'
 
 defineProps<{ task: VideoTask; modelLabel: string; busy: boolean }>()
-defineEmits<{ edit: [task: VideoTask]; regenerate: [task: VideoTask]; updated: [task: VideoTask] }>()
+defineEmits<{ edit: [task: VideoTask]; regenerate: [task: VideoTask]; review: [task: VideoTask]; updated: [task: VideoTask] }>()
 </script>
 <template>
   <article class="entry">
@@ -19,9 +19,10 @@ defineEmits<{ edit: [task: VideoTask]; regenerate: [task: VideoTask]; updated: [
     <VideoPreview v-if="task.status === 'succeeded'" class="screen" :task="task" @updated="$emit('updated', $event)" />
     <TaskProgress v-else-if="isTaskPending(task)" :task="task" />
     <p v-else class="state">{{ statusLabel(task.status) }}<template v-if="task.message"> · {{ task.message }}</template></p>
-    <div class="actions" v-if="task.prompt || task.materials.length">
+    <div class="actions" v-if="task.status === 'unknown' || task.prompt || task.materials.length">
       <button type="button" :disabled="busy" @click="$emit('edit',task)"><el-icon><EditPen /></el-icon>编辑提示</button>
-      <button type="button" :disabled="busy" @click="$emit('regenerate',task)"><el-icon><RefreshRight /></el-icon>重新生成</button>
+      <button v-if="task.status === 'unknown'" type="button" @click="$emit('review',task)">核对任务</button>
+      <button v-else type="button" :disabled="busy" @click="$emit('regenerate',task)"><el-icon><RefreshRight /></el-icon>重新生成</button>
     </div>
   </article>
 </template>

@@ -2,10 +2,11 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Download, Refresh, Star, StarFilled, VideoPlay } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import VideoPreview from './VideoPreview.vue'
+import TaskReview from './TaskReview.vue'
 import TaskProgress from './TaskProgress.vue'
 import { downloadVideo, isTaskPending, statusLabel, videos, type VideoTask, type CloudTask } from './api'
 
@@ -32,6 +33,7 @@ const error = ref('')
 const working = ref('')
 const playing = ref(false)
 const selected = ref<VideoTask>()
+const reviewing = ref<VideoTask>()
 const shown = computed(() => tab.value === 'favorites' ? items.value.filter(t => t.favorite && t.status === 'succeeded') : items.value)
 const canImport = computed(() => auth.can('*'))
 let generation = 0
@@ -100,6 +102,16 @@ function openVideo(task: VideoTask, download: boolean) {
   if (download) void act(task.id, () => downloadVideo(task.id))
   else { selected.value = task; playing.value = true }
 }
+async function linkCloud(task: CloudTask) {
+  const answer = await ElMessageBox.prompt(
+    `核对提交时间（${formatTime(task.created)}）和模型后，输入作品所有者提供的本地记录 ID。关联后，该用户可查看此任务的成片。`,
+    '关联到待核对记录', { confirmButtonText: '确认关联', cancelButtonText: '取消', inputPattern: /^[a-f0-9]{32}$/, inputErrorMessage: '请输入完整的本地记录 ID' }
+  ).catch(() => undefined)
+  if (answer) void act(task.id, async () => {
+    await videos.review(answer.value, { action: 'link', arkId: task.id })
+    ElMessage.success('已关联，后台将同步到该作品')
+  })
+}
 function importCloud(task: CloudTask) {
   void act(task.id, async () => {
     await videos.import(task.id)
@@ -126,6 +138,7 @@ function importCloud(task: CloudTask) {
         <div class="info"><strong>{{ task.id }}</strong><small>{{ task.model }} · {{ formatTime(task.created) }}</small></div>
         <el-tag effect="plain">{{ statusLabel(task.status) }}</el-tag>
         <el-button :disabled="!!working" :loading="working === task.id" @click="importCloud(task)">加入我的作品</el-button>
+        <el-button :disabled="!!working" @click="linkCloud(task)">关联到待核对记录</el-button>
       </article>
       <el-empty v-if="!cloudItems.length && !loading && !error" description="方舟暂无可查询的任务" />
       <el-pagination v-if="total > 20" v-model:current-page="page" layout="prev, pager, next" :page-size="20" :total="total" />
@@ -154,6 +167,7 @@ function importCloud(task: CloudTask) {
         </div>
         <TaskProgress v-if="isTaskPending(task)" :task="task" />
         <el-tag v-else :type="task.status === 'succeeded' ? 'success' : task.status === 'failed' ? 'danger' : 'info'">{{ statusLabel(task.status) }}</el-tag>
+        <el-button v-if="task.status === 'unknown'" @click="reviewing = task">核对任务</el-button>
         <div v-if="task.status === 'succeeded'" class="actions">
           <el-button :icon="VideoPlay" :disabled="!!working" @click="openVideo(task, false)">预览</el-button>
           <el-button :icon="Download" :disabled="!!working" @click="openVideo(task, true)">下载</el-button>
@@ -164,6 +178,7 @@ function importCloud(task: CloudTask) {
         <el-button type="primary" @click="router.push('/ai-video/create')">创作第一段视频</el-button>
       </el-empty>
     </template>
+    <TaskReview v-if="reviewing" :task="reviewing" @close="reviewing = undefined" @resolved="reviewing = undefined; load(true)" />
     <el-dialog v-model="playing" title="成片预览" width="min(850px, 95vw)" destroy-on-close @closed="selected = undefined">
       <VideoPreview v-if="playing && selected" :key="selected.id" :task="selected" autoplay @updated="updateTask" />
     </el-dialog>

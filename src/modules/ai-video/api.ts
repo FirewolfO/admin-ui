@@ -103,13 +103,15 @@ export const videos = {
     (await client.put<VideoTask>(`/tasks/${id}/favorite`, { favorite })).data,
   poster: async (id: string) => (await client.get<Blob>(`/tasks/${id}/poster`, { responseType: 'blob' })).data,
   preview: (id: string) => mediaUrl(id, 'preview'),
-  cloud: async (page: number) => (await client.get<{ items: CloudTask[]; total: number }>('/cloud', { params: { page } })).data,
+  review: (id: string, result: { action: 'link'; arkId: string } | { action: 'close' }) =>
+    client.put<void>(`/tasks/${encodeURIComponent(id)}/review`, result),
+  cloud: async (page: number, model?: string) => (await client.get<{ items: CloudTask[]; total: number }>('/cloud', { params: { page, model } })).data,
   import: async (id: string) => (await client.post<VideoTask>(`/cloud/${encodeURIComponent(id)}/import`)).data,
 }
 
 export function statusLabel(status: string) {
   return ({
-    submitting: '提交中', unknown: '待核对', queued: '排队中', running: '生成中', archiving: '保存中',
+    submitting: '提交中', unknown: '待核对', closed: '已结束核对', queued: '排队中', running: '生成中', archiving: '保存中',
     succeeded: '已完成', failed: '失败', expired: '已过期', cancelled: '已取消',
   } as Record<string, string>)[status] || status
 }

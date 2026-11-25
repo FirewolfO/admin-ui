@@ -6,6 +6,7 @@ import { apiMessage } from '@/api/client'
 import { isTaskPending, videos, type ImageMode, type VideoModel, type VideoTask } from './api'
 import AssetTray from './AssetTray.vue'
 import StudioEntry from './StudioEntry.vue'
+import TaskReview from './TaskReview.vue'
 
 const models = ref<VideoModel[]>([])
 const ratios = ref<string[]>([])
@@ -38,6 +39,7 @@ const progress = ref('')
 const error = ref('')
 const historyError = ref('')
 const tasks = ref<VideoTask[]>([])
+const reviewing = ref<VideoTask>()
 const loadingHistory = ref(true)
 const feed = ref<HTMLElement>()
 const promptField = ref<HTMLTextAreaElement>()
@@ -67,7 +69,7 @@ const oldestFirst = computed(() => tasks.value.slice().reverse())
 const hasPending = computed(() => tasks.value.some(isTaskPending))
 let timer = 0
 let historyVersion = 0
-let attempt: { signature: string; ids: string[]; next: number } | undefined
+let attempt: { signature: string; ids: string[]; next: number; unknownId?: string } | undefined
 
 watch(model, m => {
   if (!m) return
@@ -166,6 +168,17 @@ async function regenerate(t: VideoTask) {
   await nextTick()
   await submit()
 }
+function reviewed(action: 'link' | 'close') {
+  if (attempt && attempt.unknownId === reviewing.value?.id) {
+    if (action === 'close') attempt.ids[attempt.next] = newRequestId()
+    else attempt.next++
+    delete attempt.unknownId
+    if (attempt.next === attempt.ids.length) attempt = undefined
+    error.value = ''
+  }
+  reviewing.value = undefined
+  void loadHistory()
+}
 function newRequestId() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
 }
@@ -190,10 +203,15 @@ async function submit() {
       progress.value = attempt.ids.length === 1 ? '提交中' : `提交 ${index + 1}/${attempt.ids.length}`
       const task = await videos.create({...input,requestId:attempt.ids[index]})
       updateTask(task)
-      if (task.status === 'failed' || task.status === 'unknown') {
-        if (task.status === 'failed') attempt.ids[index] = newRequestId()
+      if (['failed', 'unknown', 'closed'].includes(task.status)) {
+        if (task.status === 'unknown') attempt.unknownId = task.id
+        else {
+          delete attempt.unknownId
+          attempt.ids[index] = newRequestId()
+        }
         throw new Error(task.message || '方舟未确认生成任务')
       }
+      delete attempt.unknownId
       attempt.next++
     }
     ElMessage.success(`已提交 ${batch.value} 个生成任务`)
@@ -215,9 +233,10 @@ async function submit() {
     <section ref="feed" class="feed" aria-label="生成记录">
       <div v-if="historyError" class="notice">{{ historyError }} <button type="button" @click="loadHistory()">重试</button></div>
       <StudioEntry v-for="task in oldestFirst" :key="task.id" :task="task" :busy="busy || !model"
-        :model-label="models.find(m => m.id === task.model)?.label || task.model" @updated="updateTask" @edit="loadTask" @regenerate="regenerate" />
+        :model-label="models.find(m => m.id === task.model)?.label || task.model" @updated="updateTask" @edit="loadTask" @regenerate="regenerate" @review="reviewing = $event" />
       <div v-if="!tasks.length && !historyError" class="empty"><el-icon><Film /></el-icon><p>{{ loadingHistory ? '正在加载生成记录…' : '暂无生成记录' }}</p></div>
     </section>
+    <TaskReview v-if="reviewing" :task="reviewing" @close="reviewing = undefined" @resolved="reviewed" />
     <form class="composer" @paste="assetTray?.paste($event)" :class="{ enlarged: expanded }" @submit.prevent="submit" @keydown.esc="panel ? closePanel() : expanded = false">
       <div v-if="error" class="notice" role="alert">{{ error }} <button v-if="!model" type="button" @click="loadSettings">重试</button></div>
       <div class="writing">
