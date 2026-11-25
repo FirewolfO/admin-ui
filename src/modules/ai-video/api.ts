@@ -26,6 +26,7 @@ export interface VideoModel {
 }
 
 export interface VideoTask extends CloudTask {
+  generationPercent?: number
   ark_id: string | null
   prompt: string
   image: string
@@ -113,12 +114,6 @@ export function statusLabel(status: string) {
   } as Record<string, string>)[status] || status
 }
 
-export const generationStages = [
-  { status: 'submitting', label: '提交' }, { status: 'queued', label: '排队' },
-  { status: 'running', label: '生成' }, { status: 'archiving', label: '保存' },
-  { status: 'succeeded', label: '完成' },
-]
-
 export function isTaskPending(task: CloudTask) {
-  return task.status !== 'succeeded' && generationStages.some(stage => stage.status === task.status)
+  return ['submitting', 'queued', 'running', 'archiving'].includes(task.status)
 }
