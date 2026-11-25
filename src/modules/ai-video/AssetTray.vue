@@ -8,12 +8,14 @@ import { videos, type ImageMode } from './api'
 
 const AssetBrowser = defineAsyncComponent(() => import('./AssetBrowser.vue'))
 const browsing = ref(false)
+const library = ref<InstanceType<typeof AssetBrowser>>()
 const props = defineProps<{ urls: string[]; mode: ImageMode | 'auto'; limit: number; disabled: boolean }>()
 const emit = defineEmits<{ change: [urls: string[]]; publishing: [active: boolean] }>()
 const expanded = ref(false)
 let pinned = false
 const zone = ref<HTMLElement>()
 const shelf = ref<HTMLElement>()
+const emptyAdd = ref<HTMLButtonElement>()
 const stack = ref<HTMLButtonElement>()
 const dialog = ref<HTMLDialogElement>()
 const input = ref<HTMLInputElement>()
@@ -24,6 +26,7 @@ const progress = ref('')
 const dragging = ref<number | null>(null)
 const over = ref<number | null>(null)
 const canAdd = computed(() => props.urls.length < props.limit)
+const available = computed(() => editor.value >= 0 ? 1 : Math.max(0, props.limit - props.urls.length))
 const name = (i: number) => props.mode === 'frames' ? (i === 0 ? '首帧' : '尾帧') : props.mode === 'first' ? '首帧' : `图 ${i + 1}`
 
 function rawUrl(value: string) {
@@ -63,26 +66,46 @@ function edit(index: number) {
   error.value = ''
   dialog.value?.showModal()
 }
+function closeDialog() {
+  if (!dialog.value?.open) return
+  dialog.value.close()
+  browsing.value = false
+  collapse()
+}
 function save(values: string[]) {
   const next = props.urls.slice()
   if (editor.value < 0) next.push(...values)
   else next.splice(editor.value, 1, ...values)
   emit('change', next)
 }
+function choose(urls: string[]) {
+  if (props.disabled || progress.value || !urls.length) return
+  if (urls.length > available.value) {
+    error.value = editor.value >= 0 ? '替换素材时请选择一张图片' : `本次最多可选 ${available.value} 张图片`
+    return
+  }
+  save(urls)
+  closeDialog()
+}
 function saveLink() {
   const lines = link.value.trim().split(/\r?\n/).map(s => rawUrl(s))
   if (!lines.every(Boolean)) { error.value = '请填写 FirewolfO/images 中的图片地址，每行一个。'; return }
-  if (editor.value >= 0 && lines.length !== 1) { error.value = '替换素材时请选择一张图片'; return }
-  if (editor.value < 0 && props.urls.length + lines.length > props.limit) { error.value = `当前最多使用 ${props.limit} 张图片`; return }
-  save(lines)
-  dialog.value?.close()
+  choose(lines)
 }
 async function upload(event: Event) {
   const fileInput = event.target as HTMLInputElement
   const files = Array.from(fileInput.files ?? [])
   fileInput.value = ''
-  if (!files.length || progress.value) return
-  if (editor.value < 0 && props.urls.length + files.length > props.limit) { error.value = `当前最多使用 ${props.limit} 张图片`; return }
+  await publishFiles(files)
+}
+async function publishFiles(files: File[]) {
+  if (!files.length || props.disabled || progress.value) return
+  const pending = library.value?.pendingCount ?? 0
+  if (files.length + pending > available.value) {
+    error.value = editor.value >= 0 ? '替换素材时请选择一张图片' :
+      `当前最多使用 ${props.limit} 张图片，还可添加 ${Math.max(0, available.value - pending)} 张`
+    return
+  }
   if (files.some(f => f.size >= 30_000_000)) { error.value = '每张图片须小于 30 MB'; return }
   error.value = ''
   const published: string[] = []
@@ -92,7 +115,6 @@ async function upload(event: Event) {
       progress.value = `发布中 ${published.length + 1}/${files.length}`
       published.push(await videos.upload(file))
     }
-    dialog.value?.close()
   } catch (e) {
     error.value = (published.length ? `已添加 ${published.length} 张。` : '') + apiMessage(e, '图片上传失败')
   } finally {
@@ -100,7 +122,31 @@ async function upload(event: Event) {
     progress.value = ''
     emit('publishing', false)
   }
+  if (published.length === files.length && !pending) {
+    await nextTick()
+    closeDialog()
+  }
 }
+function paste(event: ClipboardEvent) {
+  const data = event.clipboardData
+  if (!data || event.defaultPrevented || props.disabled || progress.value) return
+  // Browsers expose screenshots and copied files via either list, often via both.
+  const files = Array.from(data.files ?? []).filter(file => file.type.startsWith('image/') ||
+    (!file.type && /\.(png|jpe?g|webp)$/i.test(file.name)))
+  if (!files.length) {
+    for (const item of Array.from(data.items ?? [])) {
+      if (item.kind !== 'file' || !item.type.startsWith('image/')) continue
+      const file = item.getAsFile()
+      if (file) files.push(file)
+    }
+  }
+  if (!files.length) return
+  event.preventDefault()
+  if (!dialog.value?.open) edit(-1)
+  void publishFiles(files)
+}
+defineExpose({ paste })
+
 function move(from: number, to: number) {
   if (props.disabled || from === to || to < 0 || to >= props.urls.length) return
   const next = props.urls.slice()
@@ -118,9 +164,18 @@ function drop(index: number) {
   if (dragging.value !== null) move(dragging.value, index)
   dragging.value = over.value = null
 }
-function remove() {
-  emit('change', props.urls.filter((_, i) => i !== editor.value))
-  dialog.value?.close()
+function remove(index: number) {
+  if (props.disabled || progress.value || index < 0 || index >= props.urls.length) return
+  const focusShelf = shelf.value?.contains(document.activeElement)
+  const remaining = props.urls.filter((_, i) => i !== index)
+  emit('change', remaining)
+  closeDialog()
+  if (!remaining.length) collapse()
+  if (focusShelf) nextTick(() => {
+    const buttons = shelf.value?.querySelectorAll<HTMLButtonElement>('.remove-photo')
+    const next = buttons?.[Math.min(index, remaining.length - 1)] ?? emptyAdd.value
+    next?.focus({ preventScroll: true })
+  })
 }
 async function copy() {
   try { await copyText(props.urls[editor.value]); ElMessage.success('已复制素材地址') }
@@ -131,7 +186,7 @@ async function copy() {
   <div ref="zone" class="asset-zone" :class="{ spread: expanded && urls.length }"
     @pointerenter="e => { if (e.pointerType === 'mouse' && urls.length && !disabled) expanded = true }"
     @pointerleave="leave" @mouseleave="leave" @focusout="e => { if (e.relatedTarget && !dialog?.open && !zone?.contains(e.relatedTarget as Node) && !zone?.matches(':hover')) collapse() }">
-    <button v-if="!urls.length" type="button" class="tile add tilted" :disabled="disabled" @click="edit(-1)">
+    <button v-if="!urls.length" ref="emptyAdd" type="button" class="tile add tilted" :disabled="disabled" @click="edit(-1)">
       <el-icon><Plus /></el-icon>素材
     </button>
     <button v-else-if="!expanded" ref="stack" type="button" class="stack" :aria-label="`展开 ${urls.length} 张素材`"
@@ -146,6 +201,8 @@ async function copy() {
         <button type="button" class="thumb" :disabled="disabled" :aria-label="'编辑' + name(i)" @click="edit(i)">
           <img :src="rawUrl(url)" :alt="name(i)" draggable="false" /><span>{{ name(i) }}</span>
         </button>
+        <button type="button" class="remove-photo" :disabled="disabled" :aria-label="'移除' + name(i)"
+          title="从本次创作移除，保留素材库原图" @click="remove(i)"><el-icon><Close /></el-icon></button>
         <div v-if="urls.length > 1" class="arrows">
           <button type="button" :disabled="disabled || i === 0" :aria-label="'前移' + name(i)" @click="move(i, i-1)"><el-icon><ArrowLeft /></el-icon></button>
           <button type="button" :disabled="disabled || i === urls.length-1" :aria-label="'后移' + name(i)" @click="move(i, i+1)"><el-icon><ArrowRight /></el-icon></button>
@@ -153,20 +210,26 @@ async function copy() {
       </div>
       <button type="button" class="fold" @click="collapse(true)" aria-label="收起素材"><el-icon><Close /></el-icon></button>
     </div>
-    <dialog ref="dialog" class="asset-dialog" @cancel="e => { if (progress) e.preventDefault() }" @close="browsing = false; collapse()">
-      <header><strong>{{ editor < 0 ? '添加素材' : '编辑' + name(editor) }}</strong>
-        <button type="button" :disabled="!!progress" @click="dialog?.close()" aria-label="关闭素材窗口">×</button></header>
+    <dialog ref="dialog" class="asset-dialog" aria-labelledby="asset-dialog-title" @cancel.prevent="!progress && closeDialog()">
+      <header><strong id="asset-dialog-title">{{ editor < 0 ? '添加素材' : '编辑' + name(editor) }}</strong>
+        <button type="button" :disabled="!!progress" @click="closeDialog" aria-label="关闭素材窗口">×</button></header>
       <input type="file" ref="input" accept="image/png,image/jpeg,image/webp" :multiple="editor < 0 && limit > 1" hidden @change="upload" />
-      <button type="button" class="upload" :disabled="!!progress" @click="input?.click()"><el-icon><Upload /></el-icon>{{ progress || '选择图片并上传' }}</button>
-      <p>上传至公开的 FirewolfO/images 仓库。每张 PNG、JPEG 或 WebP 小于 30 MB。</p>
-      <button type="button" :disabled="!!progress" :aria-expanded="browsing" @click="browsing = !browsing">{{ browsing ? '收起素材库' : '从素材库选择' }}</button>
-      <AssetBrowser v-if="browsing" picker @choose="url => { save([url]); dialog?.close() }" />
-      <label for="asset-links">仓库图片地址</label>
-      <textarea id="asset-links" v-model="link" :disabled="!!progress" rows="3" placeholder="粘贴已有图片地址，每行一个" />
+      <button v-if="!browsing" type="button" class="upload" :disabled="!!progress" @click="input?.click()">
+        <el-icon><Upload /></el-icon>{{ progress || '选择图片并上传' }}
+      </button>
+      <p>可直接粘贴截图或图片。粘贴和上传的图片将发布至公开的 FirewolfO/images 仓库。支持 PNG、JPEG、WebP，每张小于 30 MB。</p>
+      <button type="button" :disabled="!!progress" :aria-expanded="browsing" @click="browsing = !browsing; error = ''">{{ browsing ? '返回' : '从素材库选择' }}</button>
+      <AssetBrowser v-if="browsing" ref="library" picker :pick-limit="editor < 0 ? available : undefined"
+        :inert="!!progress" @choose="choose" />
+      <p v-if="browsing && progress" role="status">{{ progress }}</p>
+      <template v-if="!browsing">
+        <label for="asset-links">仓库图片地址</label>
+        <textarea id="asset-links" v-model="link" :disabled="!!progress" rows="3" placeholder="粘贴已有图片地址，每行一个" />
+      </template>
       <p v-if="error" role="alert">{{ error }}</p>
-      <footer>
+      <footer v-if="!browsing">
         <button v-if="editor >= 0" type="button" :disabled="!!progress" @click="copy"><el-icon><CopyDocument /></el-icon>复制</button>
-        <button v-if="editor >= 0" type="button" :disabled="!!progress" @click="remove">移除</button>
+        <button v-if="editor >= 0" type="button" :disabled="!!progress" title="保留素材库原图" @click="remove(editor)">从本次创作移除</button>
         <button type="button" class="save" :disabled="!!progress || !link.trim()" @click="saveLink">使用地址</button>
       </footer>
     </dialog>
@@ -190,6 +253,7 @@ button:disabled { opacity:.45; cursor:default; }
 .thumb { border:0; background:#303035; width:100%; height:100%; padding:0; }
 .thumb img { display:block; width:100%; height:100%; object-fit:cover; }
 .thumb span { position:absolute; top:2px; left:3px; color:white; background:#161619bb; border-radius:3px; padding:1px 3px; font-size:11px; }
+.remove-photo { position:absolute; top:2px; right:2px; display:grid; place-items:center; width:24px; height:24px; padding:0; background:#161619db; color:white; border:0; border-radius:50%; }
 .arrows { position:absolute; bottom:0; inset-inline:0; display:flex; justify-content:space-between; pointer-events:none; }
 .arrows button,.fold { display:grid; place-items:center; background:#161619d9; border:0; border-radius:5px; width:24px; height:23px; pointer-events:auto; }
 .fold { flex:none; align-self:flex-start; }

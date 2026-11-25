@@ -79,7 +79,7 @@ export const videos = {
   settings: async () => (await client.get<{ model: string; models: VideoModel[]; ratios: string[]; cloudHistory: boolean }>('/settings')).data,
   upload: async (file: File, directory?: string) => {
     const data = new FormData()
-    data.set('image', file)
+    data.set('image', file, file.name || 'clipboard-image')
     if (directory !== undefined) data.set('directory', directory)
     return (await client.post<{ url: string }>('/assets', data)).data.url
   },

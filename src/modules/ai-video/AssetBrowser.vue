@@ -12,8 +12,21 @@ const checked = ref(new Map<string, AssetItem>())
 const selection = computed(() => [...checked.value.values()])
 const command = ref<{ action: 'move' | 'delete'; items: AssetItem[] } | null>(null)
 const folderNamePattern = /^[^.\/\\\x00-\x1f][^\/\\\x00-\x1f]*$/
-const props = defineProps<{ picker?: boolean }>()
-const emit = defineEmits<{ choose: [url: string] }>()
+const props = defineProps<{ picker?: boolean; pickLimit?: number }>()
+const emit = defineEmits<{ choose: [urls: string[]] }>()
+const pickOrder = computed(() => new Map(selection.value.map((item, index) => [item.path, index + 1])))
+defineExpose({ pendingCount: computed(() => checked.value.size) })
+
+function pick(item: AssetItem) {
+  if (!item.url) return
+  if (props.pickLimit === undefined) { emit('choose', [item.url]); return }
+  if (checked.value.has(item.path)) checked.value.delete(item.path)
+  else if (checked.value.size < props.pickLimit) checked.value.set(item.path, item)
+}
+function confirmPicks() {
+  const urls = selection.value.flatMap(item => item.url ? [item.url] : [])
+  if (urls.length && urls.length <= (props.pickLimit ?? 0)) emit('choose', urls)
+}
 const directory = ref('')
 const items = ref<AssetItem[]>([])
 const crumbs = computed(() => directory.value ? directory.value.split('/') : [])
@@ -194,8 +207,11 @@ async function copy(url: string) {
           </div>
         </template>
         <template v-else-if="item.url">
-          <button v-if="picker" type="button" class="pick" :aria-label="'选用 ' + item.name" @click="emit('choose',item.url)">
+          <button v-if="picker" type="button" class="pick" :aria-label="'选用 ' + item.name"
+            :aria-pressed="pickLimit === undefined ? undefined : checked.has(item.path)"
+            :disabled="pickLimit !== undefined && !checked.has(item.path) && checked.size >= pickLimit" @click="pick(item)">
             <img :src="item.url" alt="" loading="lazy" decoding="async" /><span>{{ item.name }}</span>
+            <b v-if="pickOrder.has(item.path)" class="pick-order" aria-hidden="true">{{ pickOrder.get(item.path) }}</b>
           </button>
           <label v-else-if="batchMode" class="select-card">
             <input type="checkbox" :checked="checked.has(item.path) || includedByFolder(item.path)" :aria-label="'选择 ' + item.name" :disabled="writing || includedByFolder(item.path)"
@@ -213,6 +229,10 @@ async function copy(url: string) {
           </template>
         </template>
       </article>
+    </div>
+    <div v-if="picker && pickLimit !== undefined" class="pick-footer">
+      <span aria-live="polite">已选 {{ checked.size }} / {{ pickLimit }} 张</span>
+      <button type="button" :disabled="!checked.size || checked.size > pickLimit" @click="confirmPicks">添加所选素材</button>
     </div>
   </section>
 </template>
@@ -240,8 +260,14 @@ button:disabled { opacity:.5; cursor:default; }
 .select-card { position:relative; display:block; cursor:pointer; }
 .select-card input { position:absolute; top:8px; left:8px; width:20px; height:20px; margin:0; }
 .asset.checked { outline:2px solid var(--el-color-primary); outline-offset:-2px; }
-.picker { max-height:45vh; overflow:auto; color:inherit; }
-.picker .grid { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); }
+.picker { display:flex; flex-direction:column; max-height:55vh; overflow:auto; color:inherit; }
+.picker .bar,.pick-footer { flex:none; }
+.pick { position:relative; }
+.pick:disabled { opacity:.55; }
+.pick-order { position:absolute; right:5px; top:5px; min-width:22px; padding:2px; border-radius:12px; text-align:center; background:#dbe6ff; color:#181c25; }
+.pick-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.pick-footer button { padding:7px 12px; border:0; border-radius:7px; background:#e0e6f4; color:#161923; }
+.picker .grid { min-height:0; overflow:auto; padding:2px; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); }
 .picker .asset { background:transparent; }
 .picker img { height:75px; }
 </style>

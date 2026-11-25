@@ -13,6 +13,7 @@ const modelId = ref('')
 const model = computed(() => models.value.find(item => item.id === modelId.value))
 const mode = ref<ImageMode | 'auto'>('auto')
 const photos = ref<string[]>([])
+const assetTray = ref<InstanceType<typeof AssetTray>>()
 const prompt = ref('')
 const ratio = ref('adaptive')
 const manualDuration = ref(5)
@@ -200,10 +201,10 @@ async function submit() {
         :model-label="models.find(m => m.id === task.model)?.label || task.model" @updated="updateTask" @edit="loadTask" @regenerate="regenerate" />
       <div v-if="!tasks.length && !historyError" class="empty"><el-icon><Film /></el-icon><p>{{ loadingHistory ? '正在加载生成记录…' : '暂无生成记录' }}</p></div>
     </section>
-    <form class="composer" :class="{ enlarged: expanded }" @submit.prevent="submit" @keydown.esc="panel ? closePanel() : expanded = false">
+    <form class="composer" @paste="assetTray?.paste($event)" :class="{ enlarged: expanded }" @submit.prevent="submit" @keydown.esc="panel ? closePanel() : expanded = false">
       <div v-if="error" class="notice" role="alert">{{ error }} <button v-if="!model" type="button" @click="loadSettings">重试</button></div>
       <div class="writing">
-        <AssetTray :urls="mode === 'text' ? [] : photos" :mode="mode" :limit="limit" :disabled="busy || !model"
+        <AssetTray ref="assetTray" :urls="mode === 'text' ? [] : photos" :mode="mode" :limit="limit" :disabled="busy || !model"
           @change="updatePhotos" @publishing="publishing = $event" />
         <textarea ref="promptField" v-model="prompt" :disabled="busy" maxlength="4000" aria-label="画面描述"
           placeholder="描述你想要生成的视频画面" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
