@@ -18,6 +18,8 @@ const shelf = ref<HTMLElement>()
 const emptyAdd = ref<HTMLButtonElement>()
 const stack = ref<HTMLButtonElement>()
 const dialog = ref<HTMLDialogElement>()
+const previewIndex = ref<number | null>(null)
+const previewUrls = computed(() => props.urls.map(rawUrl))
 const input = ref<HTMLInputElement>()
 const editor = ref(-1)
 const link = ref('')
@@ -51,13 +53,20 @@ function collapse(focus = false) {
   if (focus) nextTick(() => stack.value?.focus())
 }
 function leave() {
-  if (!pinned && dragging.value === null && !shelf.value?.querySelector(':focus-visible') && !dialog.value?.open) collapse()
+  if (previewIndex.value === null && !pinned && dragging.value === null && !shelf.value?.querySelector(':focus-visible') && !dialog.value?.open) collapse()
 }
 function outside(e: PointerEvent) {
-  if (expanded.value && !zone.value?.contains(e.target as Node) && !dialog.value?.open) collapse()
+  if (previewIndex.value === null && expanded.value && !zone.value?.contains(e.target as Node) && !dialog.value?.open) collapse()
 }
 onMounted(() => document.addEventListener('pointerdown', outside))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
+async function replacePreview() {
+  const index = previewIndex.value
+  if (index === null) return
+  previewIndex.value = null
+  await nextTick()
+  edit(index)
+}
 function edit(index: number) {
   if (props.disabled || progress.value) return
   browsing.value = false
@@ -185,31 +194,41 @@ async function copy() {
 <template>
   <div ref="zone" class="asset-zone" :class="{ spread: expanded && urls.length }"
     @pointerenter="e => { if (e.pointerType === 'mouse' && urls.length && !disabled) expanded = true }"
-    @pointerleave="leave" @mouseleave="leave" @focusout="e => { if (e.relatedTarget && !dialog?.open && !zone?.contains(e.relatedTarget as Node) && !zone?.matches(':hover')) collapse() }">
+    @pointerleave="leave" @mouseleave="leave" @focusout="e => { if (previewIndex === null && e.relatedTarget && !dialog?.open && !zone?.contains(e.relatedTarget as Node) && !zone?.matches(':hover')) collapse() }">
     <button v-if="!urls.length" ref="emptyAdd" type="button" class="tile add tilted" :disabled="disabled" @click="edit(-1)">
       <el-icon><Plus /></el-icon>素材
     </button>
-    <button v-else-if="!expanded" ref="stack" type="button" class="stack" :aria-label="`展开 ${urls.length} 张素材`"
-      :disabled="disabled" @click="expandStack">
-      <img v-for="(url, i) in urls.slice(-3)" :key="i" :src="rawUrl(url)" alt="" :style="{ '--tilt': (i - Math.min(urls.length - 1, 2)) * 8 + 3 + 'deg' }" />
-      <span class="count" aria-hidden="true">{{ canAdd ? '+' : urls.length }}</span>
-    </button>
+    <div v-else-if="!expanded" class="stack">
+      <button ref="stack" type="button" class="stack-photo" :disabled="disabled" :aria-label="'放大查看' + name(0)" @click="previewIndex = 0">
+        <img v-for="(url, i) in urls.slice(0, 3)" :key="i" :src="rawUrl(url)" alt=""
+          :style="{ '--tilt': 3 - i * 8 + 'deg', zIndex: 3 - i }" />
+      </button>
+      <button type="button" class="count" :aria-label="`展开 ${urls.length} 张素材`" :disabled="disabled" @click="expandStack">{{ canAdd ? '+' : urls.length }}</button>
+    </div>
     <div v-else ref="shelf" class="shelf" aria-label="素材顺序" @keydown.esc.prevent="collapse(true)">
-      <button type="button" class="tile add" :disabled="disabled || !canAdd" @click="edit(-1)"><el-icon><Plus /></el-icon>素材</button>
-      <div v-for="(url, i) in urls" :key="i" class="tile photo" :class="{ target: over === i && dragging !== i }"
-        :draggable="!disabled" @dragstart="dragStart($event, i)" @dragover.prevent="over = i" @drop.prevent="drop(i)" @dragend="dragging = over = null">
-        <button type="button" class="thumb" :disabled="disabled" :aria-label="'编辑' + name(i)" @click="edit(i)">
-          <img :src="rawUrl(url)" :alt="name(i)" draggable="false" /><span>{{ name(i) }}</span>
-        </button>
-        <button type="button" class="remove-photo" :disabled="disabled" :aria-label="'移除' + name(i)"
-          title="从本次创作移除，保留素材库原图" @click="remove(i)"><el-icon><Close /></el-icon></button>
-        <div v-if="urls.length > 1" class="arrows">
-          <button type="button" :disabled="disabled || i === 0" :aria-label="'前移' + name(i)" @click="move(i, i-1)"><el-icon><ArrowLeft /></el-icon></button>
-          <button type="button" :disabled="disabled || i === urls.length-1" :aria-label="'后移' + name(i)" @click="move(i, i+1)"><el-icon><ArrowRight /></el-icon></button>
+      <div class="photo-list">
+        <div v-for="(url, i) in urls" :key="i" class="tile photo" :class="{ target: over === i && dragging !== i }"
+          :draggable="!disabled" @dragstart="dragStart($event, i)" @dragover.prevent="over = i" @drop.prevent="drop(i)" @dragend="dragging = over = null">
+          <button type="button" class="thumb" :disabled="disabled" :aria-label="'放大查看' + name(i)" @click="previewIndex = i">
+            <img :src="rawUrl(url)" :alt="name(i)" draggable="false" /><span>{{ name(i) }}</span>
+          </button>
+          <button type="button" class="remove-photo" :disabled="disabled" :aria-label="'移除' + name(i)"
+            title="从本次创作移除，保留素材库原图" @click="remove(i)"><el-icon><Close /></el-icon></button>
+          <div v-if="urls.length > 1" class="arrows">
+            <button type="button" :disabled="disabled || i === 0" :aria-label="'前移' + name(i)" @click="move(i, i-1)"><el-icon><ArrowLeft /></el-icon></button>
+            <button type="button" :disabled="disabled || i === urls.length-1" :aria-label="'后移' + name(i)" @click="move(i, i+1)"><el-icon><ArrowRight /></el-icon></button>
+          </div>
         </div>
       </div>
+      <button type="button" class="tile add" :disabled="disabled || !canAdd" @click="edit(-1)"><el-icon><Plus /></el-icon>素材</button>
       <button type="button" class="fold" @click="collapse(true)" aria-label="收起素材"><el-icon><Close /></el-icon></button>
     </div>
+    <el-image-viewer v-if="previewIndex !== null" teleported hide-on-click-modal
+      :url-list="previewUrls" :initial-index="previewIndex" :show-progress="urls.length > 1"
+      @switch="previewIndex = $event" @close="previewIndex = null">
+      <button type="button" class="replace-preview" :disabled="disabled" @click="replacePreview">替换素材</button>
+      <template #viewer-error><span class="preview-error" role="alert">图片加载失败</span></template>
+    </el-image-viewer>
     <dialog ref="dialog" class="asset-dialog" aria-labelledby="asset-dialog-title" @cancel.prevent="!progress && closeDialog()">
       <header><strong id="asset-dialog-title">{{ editor < 0 ? '添加素材' : '编辑' + name(editor) }}</strong>
         <button type="button" :disabled="!!progress" @click="closeDialog" aria-label="关闭素材窗口">×</button></header>
@@ -244,19 +263,23 @@ button:disabled { opacity:.45; cursor:default; }
 .add { display:grid; align-content:center; justify-items:center; gap:4px; color:#dedee3; background:#262628; border:1px dashed #66666c; font-size:13px; }
 .add .el-icon { font-size:20px; }
 .tilted { transform:rotate(-5deg); margin:2px 6px; }
-.stack { border:0; background:transparent; margin:2px 7px; }
+.stack { margin:2px 7px; }
+.stack-photo { position:absolute; inset:0; padding:0; border:0; border-radius:inherit; background:transparent; isolation:isolate; cursor:zoom-in; }
 .stack img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:9px; transform:rotate(var(--tilt)); border:1px solid #666; background:#333; }
-.count { position:absolute; bottom:-6px; right:-8px; display:grid; place-items:center; min-width:23px; height:23px; border-radius:15px; background:#303035; border:1px solid #777; font-size:12px; }
-.shelf { display:flex; gap:8px; align-items:center; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:thin; }
+.count { position:absolute; bottom:-6px; right:-8px; display:grid; place-items:center; min-width:26px; height:26px; border-radius:15px; background:#303035; border:1px solid #777; font-size:12px; }
+.shelf { display:flex; gap:8px; align-items:flex-start; padding:2px 2px 6px; }
+.photo-list { display:flex; min-width:0; gap:8px; overflow-x:auto; scrollbar-width:thin; }
 .photo { border:1px solid #4a4a50; overflow:hidden; }
 .photo.target { outline:2px solid #b3c7fb; outline-offset:-2px; }
-.thumb { border:0; background:#303035; width:100%; height:100%; padding:0; }
+.thumb { border:0; background:#303035; width:100%; height:100%; padding:0; cursor:zoom-in; }
 .thumb img { display:block; width:100%; height:100%; object-fit:cover; }
 .thumb span { position:absolute; top:2px; left:3px; color:white; background:#161619bb; border-radius:3px; padding:1px 3px; font-size:11px; }
 .remove-photo { position:absolute; top:2px; right:2px; display:grid; place-items:center; width:24px; height:24px; padding:0; background:#161619db; color:white; border:0; border-radius:50%; }
 .arrows { position:absolute; bottom:0; inset-inline:0; display:flex; justify-content:space-between; pointer-events:none; }
 .arrows button,.fold { display:grid; place-items:center; background:#161619d9; border:0; border-radius:5px; width:24px; height:23px; pointer-events:auto; }
 .fold { flex:none; align-self:flex-start; }
+.replace-preview { position:absolute; top:40px; left:24px; z-index:1; min-height:44px; padding:0 16px; border:1px solid #777; border-radius:22px; background:#28282c; color:white; }
+.preview-error { position:relative; border-radius:8px; padding:10px 16px; background:#28282c; color:white; }
 .asset-dialog { color:#ededf2; background:#212124; border:1px solid #525259; border-radius:14px; padding:22px; width:min(430px,92vw); box-shadow:0 24px 80px #0006; }
 .asset-dialog::backdrop { background:#0009; }
 .asset-dialog header,.asset-dialog footer { display:flex; align-items:center; gap:8px; }
