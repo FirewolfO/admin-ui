@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, Star, VideoCamera } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiMessage } from '@/api/client'
-import { isTaskPending, videos, type ImageMode, type VideoModel, type VideoTask } from './api'
+import { isTaskPending, videos, type ImageMode, type VideoInput, type VideoModel, type VideoTask } from './api'
 import AssetTray from './AssetTray.vue'
 import StudioEntry from './StudioEntry.vue'
 import TaskReview from './TaskReview.vue'
@@ -69,7 +69,7 @@ const oldestFirst = computed(() => tasks.value.slice().reverse())
 const hasPending = computed(() => tasks.value.some(isTaskPending))
 let timer = 0
 let historyVersion = 0
-let attempt: { signature: string; ids: string[]; next: number; unknownId?: string } | undefined
+let attempt: { signature: string; ids: string[]; next: number } | undefined
 
 watch(model, m => {
   if (!m) return
@@ -144,11 +144,16 @@ function updatePhotos(urls: string[]) {
   photos.value = urls
   if (mode.value === 'text' && urls.length) mode.value = 'auto'
 }
+function taskMode(t: VideoTask): ImageMode {
+  if (!t.materials.length) return 'text'
+  if (t.materials[0].role === 'reference_image') return 'references'
+  return t.materials.length === 2 ? 'frames' : 'first'
+}
 function loadTask(t: VideoTask) {
   if (!models.value.some(m => m.id === t.model)) { ElMessage.warning('该历史模型当前不可用'); return false }
   modelId.value = t.model
   photos.value = t.materials.map(m => m.url)
-  mode.value = !photos.value.length ? 'text' : t.materials[0].role === 'reference_image' ? 'references' : photos.value.length === 2 ? 'frames' : 'first'
+  mode.value = taskMode(t)
   prompt.value = t.prompt
   autoDuration.value = t.duration === -1
   if (t.duration > 0) manualDuration.value = t.duration
@@ -166,23 +171,25 @@ function loadTask(t: VideoTask) {
 async function regenerate(t: VideoTask) {
   if (busy.value || !loadTask(t)) return
   await nextTick()
-  await submit()
+  await submit(t.status === 'unknown')
 }
-function reviewed(action: 'link' | 'close') {
-  if (attempt && attempt.unknownId === reviewing.value?.id) {
-    if (action === 'close') attempt.ids[attempt.next] = newRequestId()
-    else attempt.next++
-    delete attempt.unknownId
-    if (attempt.next === attempt.ids.length) attempt = undefined
-    error.value = ''
-  }
+function reviewed() {
   reviewing.value = undefined
   void loadHistory()
+}
+function hasUnconfirmedMatch(input: Omit<VideoInput, 'requestId'>) {
+  return tasks.value.some(t => ['pending_submission', 'submitting', 'unknown'].includes(t.status) &&
+    t.model === input.model && t.prompt === input.prompt && t.ratio === input.ratio && t.duration === input.duration &&
+    taskMode(t) === input.mode && t.materials.length === input.images.length &&
+    t.materials.every((m, i) => m.url === input.images[i]) &&
+    (t.options.resolution ?? input.resolution) === input.resolution &&
+    (t.options.draft ?? false) === (input.draft ?? false) &&
+    (t.options.generate_audio ?? true) === (input.audio ?? true))
 }
 function newRequestId() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
 }
-async function submit() {
+async function submit(newFromUnknown = false) {
   if (!ready.value || !model.value) return
   const input = {
     prompt:prompt.value.trim(), model:modelId.value, mode:actualMode.value, images:actualMode.value === 'text' ? [] : [...photos.value],
@@ -190,31 +197,35 @@ async function submit() {
     ...(model.value.resolutions.length ? {resolution:draft.value ? '480p' : resolution.value, audio:audio.value, draft:draft.value} : {}),
   }
   const signature = JSON.stringify([input,batch.value])
-  if (attempt?.signature !== signature) {
-    const ids = Array.from({length:batch.value}, newRequestId)
-    attempt = {signature,ids,next:0}
-  }
   submitting.value = true
   panel.value = ''
   error.value = ''
   try {
+    if (newFromUnknown || attempt?.signature !== signature) {
+      if (newFromUnknown || hasUnconfirmedMatch(input)) {
+        const confirmed = await ElMessageBox.confirm(
+          `相同设置的任务仍在等待确认。另建 ${batch.value} 个视频会单独提交，若方舟也受理了原任务，可能分别计费。`,
+          '按原设置新建视频', { confirmButtonText: '确认新建', cancelButtonText: '返回', type: 'warning' }
+        ).then(() => true, () => false)
+        if (!confirmed) return
+      }
+      attempt = {signature, ids: Array.from({length:batch.value}, newRequestId), next:0}
+    }
+    let needsReview = false
     while (attempt.next < attempt.ids.length) {
       const index = attempt.next
       progress.value = attempt.ids.length === 1 ? '提交中' : `提交 ${index + 1}/${attempt.ids.length}`
       const task = await videos.create({...input,requestId:attempt.ids[index]})
       updateTask(task)
-      if (['failed', 'unknown', 'closed'].includes(task.status)) {
-        if (task.status === 'unknown') attempt.unknownId = task.id
-        else {
-          delete attempt.unknownId
-          attempt.ids[index] = newRequestId()
-        }
-        throw new Error(task.message || '方舟未确认生成任务')
+      if (task.status === 'failed' || task.status === 'closed') {
+        attempt.ids[index] = newRequestId()
+        throw new Error(task.message || '方舟未受理生成任务')
       }
-      delete attempt.unknownId
+      if (task.status === 'unknown') needsReview = true
       attempt.next++
     }
-    ElMessage.success(`已提交 ${batch.value} 个生成任务`)
+    if (needsReview) ElMessage.warning('任务已记录，其中有提交待核对。你可以继续新建视频。')
+    else ElMessage.success(`已记录 ${batch.value} 个生成任务，可继续创作`)
     attempt = undefined
   } catch (e) { error.value = (attempt?.next ? `已提交 ${attempt.next} 个任务。` : '') + apiMessage(e,'提交失败，请重试') }
   finally {
@@ -237,13 +248,13 @@ async function submit() {
       <div v-if="!tasks.length && !historyError" class="empty"><el-icon><Film /></el-icon><p>{{ loadingHistory ? '正在加载生成记录…' : '暂无生成记录' }}</p></div>
     </section>
     <TaskReview v-if="reviewing" :task="reviewing" @close="reviewing = undefined" @resolved="reviewed" />
-    <form class="composer" @paste="assetTray?.paste($event)" :class="{ enlarged: expanded }" @submit.prevent="submit" @keydown.esc="panel ? closePanel() : expanded = false">
+    <form class="composer" @paste="assetTray?.paste($event)" :class="{ enlarged: expanded }" @submit.prevent="submit()" @keydown.esc="panel ? closePanel() : expanded = false">
       <div v-if="error" class="notice" role="alert">{{ error }} <button v-if="!model" type="button" @click="loadSettings">重试</button></div>
       <div class="writing">
         <AssetTray ref="assetTray" :urls="mode === 'text' ? [] : photos" :mode="mode" :limit="limit" :disabled="busy || !model"
           @change="updatePhotos" @publishing="publishing = $event" />
         <textarea ref="promptField" v-model="prompt" :disabled="busy" maxlength="4000" aria-label="画面描述"
-          placeholder="描述你想要生成的视频画面" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
+          placeholder="描述你想要生成的视频画面" @keydown.ctrl.enter.prevent="submit()" @keydown.meta.enter.prevent="submit()" />
         <button type="button" class="expand" :aria-expanded="expanded" :aria-label="expanded ? '收起输入框' : '展开输入框'" @click="expanded = !expanded"><el-icon><FullScreen /></el-icon></button>
       </div>
       <div v-if="invalid" role="status" class="notice">{{ invalid }}</div>

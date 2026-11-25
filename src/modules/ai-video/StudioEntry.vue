@@ -22,7 +22,7 @@ defineEmits<{ edit: [task: VideoTask]; regenerate: [task: VideoTask]; review: [t
     <div class="actions" v-if="task.status === 'unknown' || task.prompt || task.materials.length">
       <button type="button" :disabled="busy" @click="$emit('edit',task)"><el-icon><EditPen /></el-icon>编辑提示</button>
       <button v-if="task.status === 'unknown'" type="button" @click="$emit('review',task)">核对任务</button>
-      <button v-else type="button" :disabled="busy" @click="$emit('regenerate',task)"><el-icon><RefreshRight /></el-icon>重新生成</button>
+      <button type="button" :disabled="busy" @click="$emit('regenerate',task)"><el-icon><RefreshRight /></el-icon>{{ task.status === 'unknown' ? '按原设置新建' : '重新生成' }}</button>
     </div>
   </article>
 </template>
@@ -33,7 +33,7 @@ time,.state { color:#a3a3ab; font-size:13px; }
 .caption strong { font-weight:500; font-size:15px; white-space:pre-wrap; margin-right:10px; }
 .caption span { color:#aaaab2; font-size:13px; padding:0 9px; border-left:1px solid #404044; }
 .screen { max-width:500px; }
-.actions { display:flex; gap:8px; margin-top:12px; }
+.actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
 button { cursor:pointer; }
 .actions button { display:flex; align-items:center; gap:6px; background:#212124; color:#dddde2; border:1px solid #303034; border-radius:20px; padding:6px 12px; font-size:13px; }
 .actions button:hover { background:#343437; }

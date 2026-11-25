@@ -97,7 +97,7 @@ export const videos = {
   createFolder: async (directory: string, name: string) => client.post('/assets/folders', { directory, name }),
   deleteImage: async (item: AssetItem) => client.delete('/assets', { data: { path: item.path, sha: item.sha } }),
   create: async (input: VideoInput) =>
-    (await client.post<VideoTask>('/tasks', input)).data,
+    (await client.post<VideoTask>('/tasks', input, { headers: { Prefer: 'respond-async' } })).data,
   list: async (favorites = false) => (await client.get<{ items: VideoTask[] }>('/tasks', { params: favorites ? { favorite: 1 } : {} })).data.items,
   favorite: async (id: string, favorite: boolean) =>
     (await client.put<VideoTask>(`/tasks/${id}/favorite`, { favorite })).data,
@@ -111,11 +111,11 @@ export const videos = {
 
 export function statusLabel(status: string) {
   return ({
-    submitting: '提交中', unknown: '待核对', closed: '已结束核对', queued: '排队中', running: '生成中', archiving: '保存中',
+    pending_submission: '待提交', submitting: '提交中', unknown: '待核对', closed: '已结束核对', queued: '排队中', running: '生成中', archiving: '保存中',
     succeeded: '已完成', failed: '失败', expired: '已过期', cancelled: '已取消',
   } as Record<string, string>)[status] || status
 }
 
 export function isTaskPending(task: CloudTask) {
-  return ['submitting', 'queued', 'running', 'archiving'].includes(task.status)
+  return ['pending_submission', 'submitting', 'queued', 'running', 'archiving'].includes(task.status)
 }
