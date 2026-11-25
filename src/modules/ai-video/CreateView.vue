@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, VideoCamera } from '@element-plus/icons-vue'
+import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, Star, VideoCamera } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { videos, type ImageMode, type VideoModel, type VideoTask } from './api'
@@ -192,6 +192,7 @@ async function submit() {
   <section class="studio" aria-label="视频创作工作区">
     <header class="studio-top">
       <RouterLink to="/ai-video/assets"><el-icon><FolderOpened /></el-icon>素材库</RouterLink>
+      <RouterLink to="/ai-video/favorites"><el-icon><Star /></el-icon>我的收藏</RouterLink>
       <RouterLink to="/ai-video/library"><el-icon><Clock /></el-icon>生成历史</RouterLink></header>
     <section ref="feed" class="feed" aria-label="生成记录">
       <div v-if="historyError" class="notice">{{ historyError }} <button type="button" @click="loadHistory()">重试</button></div>

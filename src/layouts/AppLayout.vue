@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
 import {
-  Bell, ChatDotRound, ChatLineRound, Close, CollectionTag, Compass, Connection, DataAnalysis, DataBoard, Document, EditPen, Expand, FolderOpened, Grid, Key, Link, Lock, MagicStick, Menu as MenuIcon,
+  Bell, ChatDotRound, ChatLineRound, Close, CollectionTag, Compass, Connection, DataAnalysis, DataBoard, Document, EditPen, Expand, FolderOpened, Grid, Star, Key, Link, Lock, MagicStick, Menu as MenuIcon,
   Operation, Select, Setting, SetUp, SwitchButton, TrendCharts, UserFilled, VideoCamera,
 } from '@element-plus/icons-vue'
 import { apiMessage } from '@/api/client'
@@ -60,6 +60,7 @@ const aiVideoItems = [
   { path: '/ai-video/create', label: '视频创作', icon: VideoCamera },
   { path: '/ai-video/assets', label: '素材库', icon: FolderOpened },
   { path: '/ai-video/library', label: '我的作品', icon: CollectionTag },
+  { path: '/ai-video/favorites', label: '我的收藏', icon: Star },
 ]
 
 const aiWorkbenchItems = [

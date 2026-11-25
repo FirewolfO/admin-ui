@@ -84,11 +84,17 @@ export const videos = {
   },
   assets: async (directory: string, refresh = false) =>
     (await client.get<{ directory: string; items: AssetItem[] }>('/assets', { params: { directory, refresh: refresh ? 1 : undefined } })).data,
+  folders: async () => (await client.get<{ folders: string[] }>('/assets/folders')).data.folders,
+  batchAssets: async (action: 'delete' | 'move', selection: AssetItem[], destination: string | null) =>
+    (await client.post<{ count: number }>('/assets/batch', {
+      action, items: selection.map(({ path, sha }) => ({ path, sha })),
+      ...(action === 'move' ? { destination } : {}),
+    })).data.count,
   createFolder: async (directory: string, name: string) => client.post('/assets/folders', { directory, name }),
   deleteImage: async (item: AssetItem) => client.delete('/assets', { data: { path: item.path, sha: item.sha } }),
   create: async (input: VideoInput) =>
     (await client.post<VideoTask>('/tasks', input)).data,
-  list: async () => (await client.get<{ items: VideoTask[] }>('/tasks')).data.items,
+  list: async (favorites = false) => (await client.get<{ items: VideoTask[] }>('/tasks', { params: favorites ? { favorite: 1 } : {} })).data.items,
   favorite: async (id: string, favorite: boolean) =>
     (await client.put<VideoTask>(`/tasks/${id}/favorite`, { favorite })).data,
   poster: async (id: string) => (await client.get<Blob>(`/tasks/${id}/poster`, { responseType: 'blob' })).data,

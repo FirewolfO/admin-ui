@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Download, Refresh, Star, StarFilled, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { apiMessage } from '@/api/client'
@@ -10,7 +10,18 @@ import { downloadVideo, statusLabel, videos, type VideoTask, type CloudTask } fr
 
 const router = useRouter()
 const auth = useAuthStore()
-const tab = ref('all')
+const route = useRoute()
+const libraryTab = ref('all')
+const tab = computed({
+  get: () => route.name === 'ai-video-favorites' ? 'favorites' : libraryTab.value,
+  set: (value: string) => {
+    if (value === 'favorites') void router.push({ name: 'ai-video-favorites' })
+    else {
+      libraryTab.value = value
+      if (route.name === 'ai-video-favorites') void router.push({ name: 'ai-video-library' })
+    }
+  },
+})
 const items = ref<VideoTask[]>([])
 const cloudItems = ref<CloudTask[]>([])
 const page = ref(1)
@@ -20,7 +31,7 @@ const error = ref('')
 const working = ref('')
 const playing = ref(false)
 const selected = ref<VideoTask>()
-const shown = computed(() => tab.value === 'favorites' ? items.value.filter(t => t.favorite) : items.value)
+const shown = computed(() => tab.value === 'favorites' ? items.value.filter(t => t.favorite && t.status === 'succeeded') : items.value)
 const canImport = computed(() => auth.can('*'))
 let generation = 0
 let timer = 0
@@ -37,7 +48,7 @@ async function load(quiet = false) {
       cloudItems.value = result.items
       total.value = result.total
     } else {
-      const result = await videos.list()
+      const result = await videos.list(tab.value === 'favorites')
       if (version !== generation) return
       items.value = result
     }
@@ -45,7 +56,11 @@ async function load(quiet = false) {
   } catch (e) { if (version === generation) error.value = apiMessage(e, '任务加载失败') }
   finally { if (version === generation) loading.value = false }
 }
-watch([tab, page], () => { void load() })
+watch([tab, page], () => {
+  playing.value = false
+  items.value = []
+  void load()
+})
 onMounted(() => {
   void load()
   timer = window.setInterval(() => {
@@ -67,7 +82,7 @@ function favorite(task: VideoTask) {
 function updateTask(task: VideoTask) {
   ++generation
   loading.value = false
-  selected.value = task
+  if (selected.value?.id === task.id) selected.value = task
   items.value = items.value.map(item => item.id === task.id ? task : item)
 }
 function openVideo(task: VideoTask, download: boolean) {
@@ -88,7 +103,7 @@ function importCloud(task: CloudTask) {
     <div class="toolbar">
       <el-radio-group v-model="tab" aria-label="作品筛选">
         <el-radio-button value="all">全部作品</el-radio-button>
-        <el-radio-button value="favorites">已收藏</el-radio-button>
+        <el-radio-button value="favorites">我的收藏</el-radio-button>
         <el-radio-button v-if="canImport" value="cloud">方舟历史</el-radio-button>
       </el-radio-group>
       <div><el-button :icon="Refresh" :loading="loading" @click="load()">刷新</el-button>
@@ -103,6 +118,20 @@ function importCloud(task: CloudTask) {
       </article>
       <el-empty v-if="!cloudItems.length && !loading && !error" description="方舟暂无可查询的任务" />
       <el-pagination v-if="total > 20" v-model:current-page="page" layout="prev, pager, next" :page-size="20" :total="total" />
+    </template>
+    <template v-else-if="tab === 'favorites'">
+      <div v-if="shown.length" class="favorite-grid" aria-label="收藏的视频">
+        <article v-for="task in shown" :key="task.id" class="favorite-card">
+          <VideoPreview :task="task" @updated="updateTask" />
+          <div class="info">
+            <strong>{{ task.prompt || '收藏的视频' }}</strong>
+            <small>{{ formatTime(task.created) }}<template v-if="task.duration > 0"> · {{ task.duration }} 秒</template></small>
+          </div>
+        </article>
+      </div>
+      <el-empty v-else-if="!loading && !error" description="还没有收藏的视频">
+        <el-button @click="tab = 'all'">查看我的作品</el-button>
+      </el-empty>
     </template>
     <template v-else>
       <article v-for="task in shown" :key="task.id" class="work">
@@ -119,8 +148,8 @@ function importCloud(task: CloudTask) {
           <el-button :icon="task.favorite ? StarFilled : Star" :disabled="!!working" @click="favorite(task)">{{ task.favorite ? '取消收藏' : '收藏' }}</el-button>
         </div>
       </article>
-      <el-empty v-if="!shown.length && !loading && !error" :description="tab === 'favorites' ? '还没有收藏的成片' : '还没有作品'">
-        <el-button v-if="tab === 'all'" type="primary" @click="router.push('/ai-video/create')">创作第一段视频</el-button>
+      <el-empty v-if="!shown.length && !loading && !error" description="还没有作品">
+        <el-button type="primary" @click="router.push('/ai-video/create')">创作第一段视频</el-button>
       </el-empty>
     </template>
     <el-dialog v-model="playing" title="成片预览" width="min(850px, 95vw)" destroy-on-close @closed="selected = undefined">
@@ -139,6 +168,10 @@ function importCloud(task: CloudTask) {
 .info strong { font-size:1rem; white-space:pre-wrap; }
 .info small { font-size:.85rem; color:var(--muted); margin-top:5px; }
 .info p { margin:8px 0 0; }
+.favorite-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr)); gap:18px; }
+.favorite-card { min-width:0; }
+.favorite-card .info { padding:8px 2px; }
+.favorite-card strong { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
 .actions { gap:6px; }
 .actions .el-button { margin:0; }
 </style>
