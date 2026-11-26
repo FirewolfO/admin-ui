@@ -153,7 +153,9 @@ function updateTask(task: VideoTask) {
   }
 }
 function addPortrait(portrait: Portrait) {
-  if (!portraits.value.some(item => item.id === portrait.id)) portraits.value.push(portrait)
+  const index = portraits.value.findIndex(item => item.id === portrait.id)
+  if (index < 0) portraits.value.unshift(portrait)
+  else portraits.value[index] = portrait
 }
 async function usePortrait(urls: string[]) {
   if (busy.value) {

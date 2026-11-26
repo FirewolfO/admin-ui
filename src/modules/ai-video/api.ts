@@ -19,6 +19,7 @@ export interface Portrait {
   id: string
   name: string
   preview: string
+  scope: 'personal' | 'shared'
 }
 
 const presetCovers = import.meta.glob<string>('./portraits/*.webp', { eager: true, import: 'default' })
