@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, Star, VideoCamera } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, Star, UserFilled, VideoCamera } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { isTaskPending, videos, type ImageMode, type Portrait, type VideoInput, type VideoModel, type VideoTask } from './api'
 import AssetTray from './AssetTray.vue'
 import StudioEntry from './StudioEntry.vue'
 import TaskReview from './TaskReview.vue'
+import PortraitPicker from './PortraitPicker.vue'
+
+const props = defineProps<{ portraitLibrary?: boolean }>()
+const router = useRouter()
 
 const models = ref<VideoModel[]>([])
 const ratios = ref<string[]>([])
@@ -119,11 +124,14 @@ async function loadHistory(scroll = false) {
   finally { if (version === historyVersion) loadingHistory.value = false }
 }
 function refreshPending() {
-  if (!document.hidden && !loadingHistory.value && (hasPending.value || historyError.value)) void loadHistory()
+  if (!props.portraitLibrary && !document.hidden && !loadingHistory.value && (hasPending.value || historyError.value)) void loadHistory()
 }
+watch(() => props.portraitLibrary, library => {
+  if (!library) void loadHistory(true)
+})
 onMounted(() => {
   void loadSettings()
-  void loadHistory(true)
+  if (!props.portraitLibrary) void loadHistory(true)
   document.addEventListener('pointerdown',outside)
   document.addEventListener('visibilitychange', refreshPending)
   timer = window.setInterval(refreshPending, 8000)
@@ -146,6 +154,22 @@ function updateTask(task: VideoTask) {
 }
 function addPortrait(portrait: Portrait) {
   if (!portraits.value.some(item => item.id === portrait.id)) portraits.value.push(portrait)
+}
+async function usePortrait(urls: string[]) {
+  if (busy.value) {
+    ElMessage.info('请等待当前操作完成后再选择人像')
+    return
+  }
+  const targetModel = model.value?.maxReferences ? model.value : models.value.find(m => m.maxReferences > 0)
+  if (!targetModel || photos.value.length + urls.length > targetModel.maxReferences) {
+    ElMessage.warning(targetModel ? '已达到模型的参考图上限，请在创作页替换或移除素材' : '当前没有支持参考图的模型')
+    return
+  }
+  modelId.value = targetModel.id
+  mode.value = 'references'
+  updatePhotos([...photos.value, ...urls])
+  await router.push({ name: 'ai-video-create' })
+  promptField.value?.focus()
 }
 function updatePhotos(urls: string[]) {
   photos.value = urls
@@ -244,9 +268,16 @@ async function submit(newFromUnknown = false) {
 }
 </script>
 <template>
-  <section class="studio" aria-label="视频创作工作区">
+  <section v-if="portraitLibrary" class="portrait-library">
+    <RouterLink :to="{ name: 'ai-video-create' }">返回视频创作</RouterLink>
+    <PortraitPicker v-if="models.length" class="catalog" :portraits="portraits" @added="addPortrait" @choose="usePortrait" />
+    <p v-else-if="error" role="alert">{{ error }} <el-button @click="loadSettings">重试</el-button></p>
+    <p v-else role="status">正在加载人像…</p>
+  </section>
+  <section v-show="!portraitLibrary" class="studio" aria-label="视频创作工作区">
     <header class="studio-top">
       <RouterLink to="/ai-video/assets"><el-icon><FolderOpened /></el-icon>素材库</RouterLink>
+      <RouterLink to="/ai-video/portraits"><el-icon><UserFilled /></el-icon>预置虚拟人像</RouterLink>
       <RouterLink to="/ai-video/favorites"><el-icon><Star /></el-icon>我的收藏</RouterLink>
       <RouterLink to="/ai-video/library"><el-icon><Clock /></el-icon>生成历史</RouterLink></header>
     <section ref="feed" class="feed" aria-label="生成记录">
@@ -324,8 +355,10 @@ async function submit(newFromUnknown = false) {
   </section>
 </template>
 <style scoped>
+.portrait-library { max-width:900px; display:grid; gap:16px; }
+.portrait-library > a { justify-self:start; color:var(--el-color-primary); }
 .studio { height:100%; min-height:0; display:flex; flex-direction:column; color:#f2f2f5; background:#09090b; color-scheme:dark; }
-.studio-top { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:12px clamp(14px,2vw,30px); border-bottom:1px solid #232326; }
+.studio-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; padding:12px clamp(14px,2vw,30px); border-bottom:1px solid #232326; }
 .studio-top a,.generate,.pill { display:inline-flex; align-items:center; gap:7px; }
 
 .studio-top a { font-size:14px; text-decoration:none; color:#dedee3; background:#222225; padding:7px 13px; border-radius:20px; }

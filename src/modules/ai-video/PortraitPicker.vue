@@ -71,4 +71,12 @@ a { color:#bdcfff; }
 .manage,.fields button { justify-self:start; padding:6px 10px; }
 .fields { border-top:1px solid #555; padding-top:10px; }
 [role=alert] { color:#ffb3ae; }
+.catalog input,.catalog button { background:var(--el-fill-color-blank); color:var(--el-text-color-primary); border-color:var(--el-border-color); }
+.catalog p { color:var(--el-text-color-regular); }
+.catalog a { color:var(--el-color-primary); }
+.catalog .grid { grid-template-columns:repeat(auto-fill,minmax(min(160px,100%),1fr)); max-height:none; }
+.catalog .card img,.catalog .card .el-icon { height:170px; background:var(--el-fill-color-light); }
+.catalog .card:is(:hover,:focus-visible) { border-color:var(--el-color-primary); }
+.catalog .fields { border-color:var(--el-border-color); }
+.catalog [role=alert] { color:var(--el-color-danger); }
 </style>
