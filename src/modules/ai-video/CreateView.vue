@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, Star, VideoCamera } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiMessage } from '@/api/client'
-import { isTaskPending, videos, type ImageMode, type VideoInput, type VideoModel, type VideoTask } from './api'
+import { isTaskPending, videos, type ImageMode, type Portrait, type VideoInput, type VideoModel, type VideoTask } from './api'
 import AssetTray from './AssetTray.vue'
 import StudioEntry from './StudioEntry.vue'
 import TaskReview from './TaskReview.vue'
@@ -14,6 +14,8 @@ const modelId = ref('')
 const model = computed(() => models.value.find(item => item.id === modelId.value))
 const mode = ref<ImageMode | 'auto'>('auto')
 const photos = ref<string[]>([])
+const portraits = ref<Portrait[]>([])
+const hasPortrait = computed(() => photos.value.some(url => url.startsWith('asset://')))
 const assetTray = ref<InstanceType<typeof AssetTray>>()
 const prompt = ref('')
 const ratio = ref('adaptive')
@@ -48,7 +50,7 @@ const busy = computed(() => publishing.value || submitting.value)
 const actualMode = computed<ImageMode>(() => {
   if (mode.value !== 'auto') return mode.value
   if (!photos.value.length) return 'text'
-  return photos.value.length === 1 ? 'first' : 'references'
+  return photos.value.length === 1 && !hasPortrait.value ? 'first' : 'references'
 })
 const limit = computed(() => {
   if (mode.value === 'frames') return 2
@@ -59,6 +61,7 @@ const frameLocked = computed(() => model.value?.adaptiveFramesOnly && ['first','
 const taskRatio = computed(() => frameLocked.value ? 'adaptive' : ratio.value)
 const invalid = computed(() => {
   if (actualMode.value === 'text') return ''
+  if (hasPortrait.value && (!model.value?.maxReferences || actualMode.value !== 'references')) return '预置虚拟人像需要选择支持多图参考的模型和模式'
   if (photos.value.length > limit.value) return `当前模式最多使用 ${limit.value} 张图，请移除多余素材或切换模式。`
   if (actualMode.value === 'frames' && photos.value.length !== 2) return '请依次添加首帧和尾帧图片'
   if (!photos.value.length) return '请添加图片素材'
@@ -95,6 +98,7 @@ function closePanel() {
 async function loadSettings() {
   try {
     const result = await videos.settings()
+    portraits.value = result.portraits ?? []
     models.value = result.models
     ratios.value = result.ratios
     modelId.value = result.model
@@ -140,8 +144,12 @@ function updateTask(task: VideoTask) {
     nextTick(toBottom)
   }
 }
+function addPortrait(portrait: Portrait) {
+  if (!portraits.value.some(item => item.id === portrait.id)) portraits.value.push(portrait)
+}
 function updatePhotos(urls: string[]) {
   photos.value = urls
+  if (hasPortrait.value && ['first', 'frames'].includes(mode.value)) mode.value = 'references'
   if (mode.value === 'text' && urls.length) mode.value = 'auto'
 }
 function taskMode(t: VideoTask): ImageMode {
@@ -251,8 +259,8 @@ async function submit(newFromUnknown = false) {
     <form class="composer" @paste="assetTray?.paste($event)" :class="{ enlarged: expanded }" @submit.prevent="submit()" @keydown.esc="panel ? closePanel() : expanded = false">
       <div v-if="error" class="notice" role="alert">{{ error }} <button v-if="!model" type="button" @click="loadSettings">重试</button></div>
       <div class="writing">
-        <AssetTray ref="assetTray" :urls="mode === 'text' ? [] : photos" :mode="mode" :limit="limit" :disabled="busy || !model"
-          @change="updatePhotos" @publishing="publishing = $event" />
+        <AssetTray ref="assetTray" :urls="mode === 'text' ? [] : photos" :mode="mode" :limit="limit" :portraits="portraits" :can-use-portraits="!!model?.maxReferences" :disabled="busy || !model"
+          @added="addPortrait" @change="updatePhotos" @publishing="publishing = $event" />
         <textarea ref="promptField" v-model="prompt" :disabled="busy" maxlength="4000" aria-label="画面描述"
           placeholder="描述你想要生成的视频画面" @keydown.ctrl.enter.prevent="submit()" @keydown.meta.enter.prevent="submit()" />
         <button type="button" class="expand" :aria-expanded="expanded" :aria-label="expanded ? '收起输入框' : '展开输入框'" @click="expanded = !expanded"><el-icon><FullScreen /></el-icon></button>

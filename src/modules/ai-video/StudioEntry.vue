@@ -18,9 +18,9 @@ defineEmits<{ edit: [task: VideoTask]; regenerate: [task: VideoTask]; review: [t
     </div>
     <VideoPreview v-if="task.status === 'succeeded'" class="screen" :task="task" @updated="$emit('updated', $event)" />
     <TaskProgress v-else-if="isTaskPending(task)" :task="task" />
-    <p v-else class="state">{{ statusLabel(task.status) }}<template v-if="task.message"> · {{ task.message }}</template></p>
+    <p v-else class="state">{{ statusLabel(task.status) }}<template v-if="task.message.includes('InputImageSensitiveContentDetected.PrivacyInformation')"> · 方舟判断输入图片可能含有真人。可编辑素材，使用预置虚拟人像替换对应的参考图。</template><template v-else-if="task.message"> · {{ task.message }}</template></p>
     <div class="actions" v-if="task.status === 'unknown' || task.prompt || task.materials.length">
-      <button type="button" :disabled="busy" @click="$emit('edit',task)"><el-icon><EditPen /></el-icon>编辑提示</button>
+      <button type="button" :disabled="busy" @click="$emit('edit',task)"><el-icon><EditPen /></el-icon>{{ task.message.includes('InputImageSensitiveContentDetected.PrivacyInformation') ? '编辑素材' : '编辑提示' }}</button>
       <button v-if="task.status === 'unknown'" type="button" @click="$emit('review',task)">核对任务</button>
       <button type="button" :disabled="busy" @click="$emit('regenerate',task)"><el-icon><RefreshRight /></el-icon>{{ task.status === 'unknown' ? '按原设置新建' : '重新生成' }}</button>
     </div>

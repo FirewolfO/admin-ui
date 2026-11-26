@@ -15,6 +15,17 @@ export interface CloudTask {
 
 export type ImageMode = 'text' | 'first' | 'frames' | 'references'
 
+export interface Portrait {
+  id: string
+  name: string
+  preview: string
+}
+
+const presetCovers = import.meta.glob<string>('./portraits/*.webp', { eager: true, import: 'default' })
+export function portraitCover(p: Portrait) {
+  return presetCovers[`./portraits/${p.id}.webp`] || p.preview
+}
+
 export interface VideoModel {
   id: string
   label: string
@@ -77,7 +88,8 @@ export async function downloadVideo(id: string) {
 }
 
 export const videos = {
-  settings: async () => (await client.get<{ model: string; models: VideoModel[]; ratios: string[]; cloudHistory: boolean }>('/settings')).data,
+  settings: async () => (await client.get<{ model: string; models: VideoModel[]; ratios: string[]; cloudHistory: boolean; portraits: Portrait[] }>('/settings')).data,
+  addPortrait: async (portrait: Portrait) => (await client.post<Portrait>('/portraits', portrait)).data,
   upload: async (file: File, directory?: string) => {
     const data = new FormData()
     data.set('image', file, file.name || 'clipboard-image')

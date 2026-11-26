@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { defineAsyncComponent, computed, nextTick, onMounted, onBeforeUnmount, ref } from 'vue'
-import { ArrowLeft, ArrowRight, Close, CopyDocument, Plus, Upload } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Close, CopyDocument, Plus, Upload, UserFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { copyText } from '@permission/utils/clipboard'
-import { videos, type ImageMode } from './api'
+import PortraitPicker from './PortraitPicker.vue'
+import { portraitCover, videos, type ImageMode, type Portrait } from './api'
 
 const AssetBrowser = defineAsyncComponent(() => import('./AssetBrowser.vue'))
-const browsing = ref(false)
+const browsing = ref<'' | 'images' | 'portraits'>('')
 const library = ref<InstanceType<typeof AssetBrowser>>()
-const props = defineProps<{ urls: string[]; mode: ImageMode | 'auto'; limit: number; disabled: boolean }>()
-const emit = defineEmits<{ change: [urls: string[]]; publishing: [active: boolean] }>()
+const props = defineProps<{ urls: string[]; mode: ImageMode | 'auto'; limit: number; disabled: boolean; portraits: Portrait[]; canUsePortraits: boolean }>()
+const emit = defineEmits<{ change: [urls: string[]]; added: [portrait: Portrait]; publishing: [active: boolean] }>()
 const expanded = ref(false)
 let pinned = false
 const zone = ref<HTMLElement>()
@@ -19,7 +20,11 @@ const emptyAdd = ref<HTMLButtonElement>()
 const stack = ref<HTMLButtonElement>()
 const dialog = ref<HTMLDialogElement>()
 const previewIndex = ref<number | null>(null)
-const previewUrls = computed(() => props.urls.map(rawUrl))
+const byUri = computed(() => new Map(props.portraits.map(p => ['asset://' + p.id, p])))
+const previewUrls = computed(() => props.urls.map(url => {
+  const portrait = byUri.value.get(url)
+  return portrait ? portraitCover(portrait) : rawUrl(url)
+}))
 const input = ref<HTMLInputElement>()
 const editor = ref(-1)
 const link = ref('')
@@ -41,6 +46,10 @@ function rawUrl(value: string) {
     if (u.origin === 'https://raw.githubusercontent.com' && /^\/FirewolfO\/images\/.+\/.+/.test(u.pathname)) return u.origin + u.pathname
   } catch { /* An incomplete address is validated when saved. */ }
   return ''
+}
+function showPhoto(index: number) {
+  if (previewUrls.value[index]) previewIndex.value = index
+  else edit(index)
 }
 function expandStack(e: MouseEvent) {
   pinned = true
@@ -69,16 +78,17 @@ async function replacePreview() {
 }
 function edit(index: number) {
   if (props.disabled || progress.value) return
-  browsing.value = false
+  browsing.value = ''
   editor.value = index
   link.value = index < 0 ? '' : props.urls[index]
+  if (props.canUsePortraits && link.value.startsWith('asset://')) browsing.value = 'portraits'
   error.value = ''
   dialog.value?.showModal()
 }
 function closeDialog() {
   if (!dialog.value?.open) return
   dialog.value.close()
-  browsing.value = false
+  browsing.value = ''
   collapse()
 }
 function save(values: string[]) {
@@ -137,6 +147,7 @@ async function publishFiles(files: File[]) {
   }
 }
 function paste(event: ClipboardEvent) {
+  if (browsing.value === 'portraits') return
   const data = event.clipboardData
   if (!data || event.defaultPrevented || props.disabled || progress.value) return
   // Browsers expose screenshots and copied files via either list, often via both.
@@ -199,9 +210,12 @@ async function copy() {
       <el-icon><Plus /></el-icon>素材
     </button>
     <div v-else-if="!expanded" class="stack">
-      <button ref="stack" type="button" class="stack-photo" :disabled="disabled" :aria-label="'放大查看' + name(0)" @click="previewIndex = 0">
-        <img v-for="(url, i) in urls.slice(0, 3)" :key="i" :src="rawUrl(url)" alt=""
-          :style="{ '--tilt': 3 - i * 8 + 'deg', zIndex: 3 - i }" />
+      <button ref="stack" type="button" class="stack-photo" :disabled="disabled" :aria-label="'放大查看' + name(0)" @click="showPhoto(0)">
+        <template v-for="(url, i) in urls.slice(0, 3)" :key="i">
+          <img v-if="previewUrls[i]" :src="previewUrls[i]" :alt="byUri.get(url)?.name || ''"
+            :style="{ '--tilt': 3 - i * 8 + 'deg', zIndex: 3 - i }" />
+          <span v-else class="stack-fallback" :style="{ zIndex: 3 - i }">{{ byUri.get(url)?.name || name(i) }}</span>
+        </template>
       </button>
       <button type="button" class="count" :aria-label="`展开 ${urls.length} 张素材`" :disabled="disabled" @click="expandStack">{{ canAdd ? '+' : urls.length }}</button>
     </div>
@@ -209,8 +223,8 @@ async function copy() {
       <div class="photo-list">
         <div v-for="(url, i) in urls" :key="i" class="tile photo" :class="{ target: over === i && dragging !== i }"
           :draggable="!disabled" @dragstart="dragStart($event, i)" @dragover.prevent="over = i" @drop.prevent="drop(i)" @dragend="dragging = over = null">
-          <button type="button" class="thumb" :disabled="disabled" :aria-label="'放大查看' + name(i)" @click="previewIndex = i">
-            <img :src="rawUrl(url)" :alt="name(i)" draggable="false" /><span>{{ name(i) }}</span>
+          <button type="button" class="thumb" :disabled="disabled" :aria-label="'放大查看' + name(i)" @click="showPhoto(i)">
+            <img v-if="previewUrls[i]" :src="previewUrls[i]" :alt="byUri.get(url)?.name || name(i)" draggable="false" /><small v-else>{{ byUri.get(url)?.name || '人像' }}</small><span>{{ name(i) }}</span>
           </button>
           <button type="button" class="remove-photo" :disabled="disabled" :aria-label="'移除' + name(i)"
             title="从本次创作移除，保留素材库原图" @click="remove(i)"><el-icon><Close /></el-icon></button>
@@ -227,7 +241,7 @@ async function copy() {
       :url-list="previewUrls" :initial-index="previewIndex" :show-progress="urls.length > 1"
       @switch="previewIndex = $event" @close="previewIndex = null">
       <button type="button" class="replace-preview" :disabled="disabled" @click="replacePreview">替换素材</button>
-      <template #viewer-error><span class="preview-error" role="alert">图片加载失败</span></template>
+      <template #viewer-error><span class="preview-error" role="alert">{{ byUri.get(urls[previewIndex])?.name || '图片加载失败' }}</span></template>
     </el-image-viewer>
     <dialog ref="dialog" class="asset-dialog" aria-labelledby="asset-dialog-title" @cancel.prevent="!progress && closeDialog()">
       <header><strong id="asset-dialog-title">{{ editor < 0 ? '添加素材' : '编辑' + name(editor) }}</strong>
@@ -236,10 +250,15 @@ async function copy() {
       <button v-if="!browsing" type="button" class="upload" :disabled="!!progress" @click="input?.click()">
         <el-icon><Upload /></el-icon>{{ progress || '选择图片并上传' }}
       </button>
-      <p>可直接粘贴截图或图片。粘贴和上传的图片将发布至公开的 FirewolfO/images 仓库。支持 PNG、JPEG、WebP，每张小于 30 MB。</p>
-      <button type="button" :disabled="!!progress" :aria-expanded="browsing" @click="browsing = !browsing; error = ''">{{ browsing ? '返回' : '从素材库选择' }}</button>
-      <AssetBrowser v-if="browsing" ref="library" picker :pick-limit="editor < 0 ? available : undefined"
+      <p v-if="!browsing">可直接粘贴截图或图片。粘贴和上传的图片将发布至公开的 FirewolfO/images 仓库。支持 PNG、JPEG、WebP，每张小于 30 MB。</p>
+      <div class="sources">
+        <button v-if="!browsing" type="button" :disabled="!!progress" @click="browsing = 'images'; error = ''">从素材库选择</button>
+        <button v-if="!browsing && canUsePortraits" type="button" :disabled="!!progress" @click="browsing = 'portraits'; error = ''"><el-icon><UserFilled /></el-icon>预置虚拟人像</button>
+        <button v-if="browsing" type="button" :disabled="!!progress" @click="browsing = ''; error = ''">返回</button>
+      </div>
+      <AssetBrowser v-if="browsing === 'images'" ref="library" picker :pick-limit="editor < 0 ? available : undefined"
         :inert="!!progress" @choose="choose" />
+      <PortraitPicker v-if="browsing === 'portraits'" :portraits="portraits" @added="emit('added', $event)" @choose="choose" />
       <p v-if="browsing && progress" role="status">{{ progress }}</p>
       <template v-if="!browsing">
         <label for="asset-links">仓库图片地址</label>
@@ -281,6 +300,8 @@ button:disabled { opacity:.45; cursor:default; }
 .replace-preview { position:absolute; top:40px; left:24px; z-index:1; min-height:44px; padding:0 16px; border:1px solid #777; border-radius:22px; background:#28282c; color:white; }
 .preview-error { position:relative; border-radius:8px; padding:10px 16px; background:#28282c; color:white; }
 .asset-dialog { color:#ededf2; background:#212124; border:1px solid #525259; border-radius:14px; padding:22px; width:min(430px,92vw); box-shadow:0 24px 80px #0006; }
+.sources { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
+.stack-fallback { position:absolute; inset:0; display:grid; place-content:center; width:100%; height:100%; background:#303034; border-radius:9px; }
 .asset-dialog::backdrop { background:#0009; }
 .asset-dialog header,.asset-dialog footer { display:flex; align-items:center; gap:8px; }
 .asset-dialog header { justify-content:space-between; margin-bottom:18px; }
