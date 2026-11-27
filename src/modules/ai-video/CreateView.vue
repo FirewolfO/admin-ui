@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { Clock, FolderOpened, Film, FullScreen, MagicStick, Operation, Star, UserFilled, VideoCamera } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { CollectionTag, FolderOpened, Film, FullScreen, MagicStick, Operation, Star, UserFilled, VideoCamera } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiMessage } from '@/api/client'
-import { isTaskPending, videos, type ImageMode, type Portrait, type VideoInput, type VideoModel, type VideoTask } from './api'
+import { isTaskPending, videos, type ImageMode, type Portrait, type TaskSet, type VideoInput, type VideoModel, type VideoTask } from './api'
 import AssetTray from './AssetTray.vue'
 import StudioEntry from './StudioEntry.vue'
 import TaskReview from './TaskReview.vue'
@@ -12,6 +12,13 @@ import PortraitPicker from './PortraitPicker.vue'
 
 const props = defineProps<{ portraitLibrary?: boolean }>()
 const router = useRouter()
+const route = useRoute()
+const sets = ref<TaskSet[]>([])
+const setsError = ref('')
+const routeSet = () => typeof route.query.set === 'string' ? route.query.set : ''
+const setId = ref(routeSet())
+const setQuery = computed(() => setId.value ? { set: setId.value } : {})
+const knownSet = computed(() => !setId.value || sets.value.some(s => s.id === setId.value))
 
 const models = ref<VideoModel[]>([])
 const ratios = ref<string[]>([])
@@ -72,7 +79,7 @@ const invalid = computed(() => {
   if (!photos.value.length) return '请添加图片素材'
   return ''
 })
-const ready = computed(() => !!model.value && !busy.value && !invalid.value && (actualMode.value !== 'text' || !!prompt.value.trim()))
+const ready = computed(() => knownSet.value && !!model.value && !busy.value && !invalid.value && (actualMode.value !== 'text' || !!prompt.value.trim()))
 const oldestFirst = computed(() => tasks.value.slice().reverse())
 const hasPending = computed(() => tasks.value.some(isTaskPending))
 let timer = 0
@@ -111,11 +118,19 @@ async function loadSettings() {
   } catch (e) { error.value = apiMessage(e,'加载模型失败') }
 }
 function toBottom() { if (feed.value) feed.value.scrollTop = feed.value.scrollHeight }
+async function loadSets() {
+  try { sets.value = (await videos.taskSets()).items; setsError.value = '' }
+  catch (e) { setsError.value = apiMessage(e, '加载任务集失败') }
+}
+function switchSet(event: Event) {
+  const id = (event.target as HTMLSelectElement).value
+  void router.push({ name: 'ai-video-create', query: id ? { set: id } : {} })
+}
 async function loadHistory(scroll = false) {
   const version = ++historyVersion
   loadingHistory.value = true
   try {
-    const items = await videos.list()
+    const items = await videos.list(false, setId.value || 'ungrouped')
     if (version !== historyVersion) return
     tasks.value = items
     historyError.value = ''
@@ -126,11 +141,18 @@ async function loadHistory(scroll = false) {
 function refreshPending() {
   if (!props.portraitLibrary && !document.hidden && !loadingHistory.value && (hasPending.value || historyError.value)) void loadHistory()
 }
-watch(() => props.portraitLibrary, library => {
-  if (!library) void loadHistory(true)
+watch(() => [route.name, route.query.set], () => {
+  if (route.name !== 'ai-video-create') return
+  if (setId.value !== routeSet()) {
+    setId.value = routeSet()
+    tasks.value = []
+    reviewing.value = undefined
+  }
+  void loadHistory(true)
 })
 onMounted(() => {
   void loadSettings()
+  void loadSets()
   if (!props.portraitLibrary) void loadHistory(true)
   document.addEventListener('pointerdown',outside)
   document.addEventListener('visibilitychange', refreshPending)
@@ -143,6 +165,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', refreshPending)
 })
 function updateTask(task: VideoTask) {
+  if ((task.setId || '') !== setId.value) return
   ++historyVersion
   loadingHistory.value = false
   if (tasks.value.some(item => item.id === task.id)) {
@@ -170,7 +193,7 @@ async function usePortrait(urls: string[]) {
   modelId.value = targetModel.id
   mode.value = 'references'
   updatePhotos([...photos.value, ...urls])
-  await router.push({ name: 'ai-video-create' })
+  await router.push({ name: 'ai-video-create', query: setQuery.value })
   promptField.value?.focus()
 }
 function updatePhotos(urls: string[]) {
@@ -226,6 +249,7 @@ function newRequestId() {
 async function submit(newFromUnknown = false) {
   if (!ready.value || !model.value) return
   const input = {
+    setId: setId.value || null,
     prompt:prompt.value.trim(), model:modelId.value, mode:actualMode.value, images:actualMode.value === 'text' ? [] : [...photos.value],
     ratio:taskRatio.value, duration:duration.value,
     ...(model.value.resolutions.length ? {resolution:draft.value ? '480p' : resolution.value, audio:audio.value, draft:draft.value} : {}),
@@ -271,21 +295,29 @@ async function submit(newFromUnknown = false) {
 </script>
 <template>
   <section v-if="portraitLibrary" class="portrait-library">
-    <RouterLink :to="{ name: 'ai-video-create' }">返回视频创作</RouterLink>
+    <RouterLink :to="{ name: 'ai-video-create', query: setQuery }">返回视频创作</RouterLink>
     <PortraitPicker v-if="models.length" class="catalog" :portraits="portraits" @added="addPortrait" @choose="usePortrait" />
     <p v-else-if="error" role="alert">{{ error }} <el-button @click="loadSettings">重试</el-button></p>
     <p v-else role="status">正在加载人像…</p>
   </section>
   <section v-show="!portraitLibrary" class="studio" aria-label="视频创作工作区">
     <header class="studio-top">
+      <label class="set-selector">当前任务集
+        <select :value="setId" :disabled="busy" @change="switchSet">
+          <option value="">未分组</option>
+          <option v-if="!knownSet" :value="setId" disabled>任务集待确认</option>
+          <option v-for="item in sets" :key="item.id" :value="item.id">{{ item.name }}</option>
+        </select>
+      </label>
+      <RouterLink :to="{name:'ai-video-task-sets'}"><el-icon><CollectionTag /></el-icon>任务集</RouterLink>
       <RouterLink to="/ai-video/assets"><el-icon><FolderOpened /></el-icon>素材库</RouterLink>
-      <RouterLink to="/ai-video/portraits"><el-icon><UserFilled /></el-icon>预置虚拟人像</RouterLink>
-      <RouterLink to="/ai-video/favorites"><el-icon><Star /></el-icon>我的收藏</RouterLink>
-      <RouterLink to="/ai-video/library"><el-icon><Clock /></el-icon>生成历史</RouterLink></header>
+      <RouterLink :to="{name:'ai-video-portraits', query:setQuery}"><el-icon><UserFilled /></el-icon>预置虚拟人像</RouterLink>
+      <RouterLink to="/ai-video/favorites"><el-icon><Star /></el-icon>我的收藏</RouterLink></header>
+    <div v-if="setsError" class="notice" role="alert">{{ setsError }} <button @click="loadSets">重试</button></div>
     <section ref="feed" class="feed" aria-label="生成记录">
       <div v-if="historyError" class="notice">{{ historyError }} <button type="button" @click="loadHistory()">重试</button></div>
       <StudioEntry v-for="task in oldestFirst" :key="task.id" :task="task" :busy="busy || !model"
-        :model-label="models.find(m => m.id === task.model)?.label || task.model" @updated="updateTask" @edit="loadTask" @regenerate="regenerate" @review="reviewing = $event" />
+        :model-label="models.find(m => m.id === task.model)?.label || task.model" @updated="updateTask" @refresh="loadHistory()" @edit="loadTask" @regenerate="regenerate" @review="reviewing = $event" />
       <div v-if="!tasks.length && !historyError" class="empty"><el-icon><Film /></el-icon><p>{{ loadingHistory ? '正在加载生成记录…' : '暂无生成记录' }}</p></div>
     </section>
     <TaskReview v-if="reviewing" :task="reviewing" @close="reviewing = undefined" @resolved="reviewed" />
@@ -362,6 +394,8 @@ async function submit(newFromUnknown = false) {
 .studio { height:100%; min-height:0; display:flex; flex-direction:column; color:#f2f2f5; background:#09090b; color-scheme:dark; }
 .studio-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; padding:12px clamp(14px,2vw,30px); border-bottom:1px solid #232326; }
 .studio-top a,.generate,.pill { display:inline-flex; align-items:center; gap:7px; }
+.set-selector { display:flex; align-items:center; gap:8px; margin-right:auto; min-width:0; font-size:14px; }
+.set-selector select { max-width:min(46vw,240px); border:1px solid #505058; border-radius:7px; padding:6px; color:inherit; background:#222225; }
 
 .studio-top a { font-size:14px; text-decoration:none; color:#dedee3; background:#222225; padding:7px 13px; border-radius:20px; }
 .feed { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:24px clamp(16px,2.4vw,36px) 0; scrollbar-color:#404046 transparent; }

@@ -38,6 +38,8 @@ export interface VideoModel {
 }
 
 export interface VideoTask extends CloudTask {
+  setId: string | null
+  canCancel: boolean
   generationPercent?: number
   ark_id: string | null
   prompt: string
@@ -51,6 +53,7 @@ export interface VideoTask extends CloudTask {
 }
 
 export interface VideoInput {
+  setId: string | null
   requestId: string
   prompt: string
   model: string
@@ -61,6 +64,12 @@ export interface VideoInput {
   resolution?: string
   draft?: boolean
   audio?: boolean
+}
+
+export interface TaskSet {
+  id: string
+  name: string
+  taskCount: number
 }
 
 export interface AssetItem {
@@ -111,7 +120,13 @@ export const videos = {
   deleteImage: async (item: AssetItem) => client.delete('/assets', { data: { path: item.path, sha: item.sha } }),
   create: async (input: VideoInput) =>
     (await client.post<VideoTask>('/tasks', input, { headers: { Prefer: 'respond-async' } })).data,
-  list: async (favorites = false) => (await client.get<{ items: VideoTask[] }>('/tasks', { params: favorites ? { favorite: 1 } : {} })).data.items,
+  taskSets: async () => (await client.get<{items: TaskSet[]; ungroupedCount: number}>('/task-sets')).data,
+  createSet: async (name: string) => (await client.post<TaskSet>('/task-sets', { name })).data,
+  renameSet: (id: string, name: string) => client.patch('/task-sets/' + encodeURIComponent(id), { name }),
+  deleteSet: (id: string) => client.delete('/task-sets/' + encodeURIComponent(id)),
+  list: async (favorites = false, setId?: string) => (await client.get<{ items: VideoTask[] }>('/tasks',
+    { params: { favorite: favorites ? 1 : undefined, setId } })).data.items,
+  cancel: async (id: string) => (await client.post<VideoTask>(`/tasks/${encodeURIComponent(id)}/cancel`)).data,
   favorite: async (id: string, favorite: boolean) =>
     (await client.put<VideoTask>(`/tasks/${id}/favorite`, { favorite })).data,
   poster: async (id: string) => (await client.get<Blob>(`/tasks/${id}/poster`, { responseType: 'blob' })).data,
@@ -125,10 +140,10 @@ export const videos = {
 export function statusLabel(status: string) {
   return ({
     pending_submission: '待提交', submitting: '提交中', unknown: '待核对', closed: '已结束核对', queued: '排队中', running: '生成中', archiving: '保存中',
-    succeeded: '已完成', failed: '失败', expired: '已过期', cancelled: '已取消',
+    succeeded: '已完成', failed: '失败', expired: '已过期', cancelled: '已取消', cancelling: '取消中', cancel_check: '待确认取消结果',
   } as Record<string, string>)[status] || status
 }
 
 export function isTaskPending(task: CloudTask) {
-  return ['pending_submission', 'submitting', 'queued', 'running', 'archiving'].includes(task.status)
+  return ['pending_submission', 'submitting', 'queued', 'running', 'archiving', 'cancelling', 'cancel_check'].includes(task.status)
 }

@@ -60,7 +60,7 @@ const aiVideoItems = [
   { path: '/ai-video/create', label: '视频创作', icon: VideoCamera },
   { path: '/ai-video/assets', label: '素材库', icon: FolderOpened },
   { path: '/ai-video/portraits', label: '预置虚拟人像', icon: UserFilled },
-  { path: '/ai-video/library', label: '我的作品', icon: CollectionTag },
+  { path: '/ai-video/task-sets', label: '任务集', icon: CollectionTag },
   { path: '/ai-video/favorites', label: '我的收藏', icon: Star },
 ]
 
