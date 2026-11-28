@@ -29,6 +29,17 @@ function confirmPicks() {
 }
 const directory = ref('')
 const items = ref<AssetItem[]>([])
+const directoryImages = computed(() => items.value.filter(item => item.kind === 'image' && item.url))
+const unpickedImages = computed(() => directoryImages.value.filter(item => !checked.value.has(item.path)))
+const pickSlots = computed(() => Math.max(0, (props.pickLimit ?? 0) - checked.value.size))
+
+function pickDirectory() {
+  for (const item of unpickedImages.value.slice(0, pickSlots.value)) checked.value.set(item.path, item)
+}
+function clearDirectoryPicks() {
+  for (const item of directoryImages.value) checked.value.delete(item.path)
+}
+
 const crumbs = computed(() => directory.value ? directory.value.split('/') : [])
 const error = ref('')
 const loading = ref(false)
@@ -168,6 +179,12 @@ async function copy(url: string) {
         </template>
       </nav>
       <div class="tools">
+        <template v-if="picker && pickLimit !== undefined">
+          <button type="button" :disabled="loading || !pickSlots || !unpickedImages.length" @click="pickDirectory">
+            全选当前目录<template v-if="pickSlots && unpickedImages.length > pickSlots">（按顺序补选 {{ pickSlots }} 张）</template>
+          </button>
+          <button v-if="unpickedImages.length < directoryImages.length" type="button" @click="clearDirectoryPicks">取消本目录选择</button>
+        </template>
         <button v-if="!picker" type="button" :aria-pressed="batchMode" :disabled="writing" @click="toggleMode">{{ batchMode ? '退出批量管理' : '批量管理' }}</button>
         <button v-if="!picker" type="button" :disabled="loading || writing" @click="createFolder"><el-icon><FolderAdd /></el-icon>新建目录</button>
         <button v-if="!picker" type="button" :disabled="loading || writing" @click="input?.click()"><el-icon><Upload /></el-icon>上传图片</button>
