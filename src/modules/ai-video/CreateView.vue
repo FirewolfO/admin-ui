@@ -236,7 +236,7 @@ function reviewed() {
 }
 function hasUnconfirmedMatch(input: Omit<VideoInput, 'requestId'>) {
   return tasks.value.some(t => ['pending_submission', 'submitting', 'unknown'].includes(t.status) &&
-    t.model === input.model && t.prompt === input.prompt && t.ratio === input.ratio && t.duration === input.duration &&
+    t.model === input.model && t.prompt.trim() === input.prompt.trim() && t.ratio === input.ratio && t.duration === input.duration &&
     taskMode(t) === input.mode && t.materials.length === input.images.length &&
     t.materials.every((m, i) => m.url === input.images[i]) &&
     (t.options.resolution ?? input.resolution) === input.resolution &&
@@ -250,7 +250,7 @@ async function submit(newFromUnknown = false) {
   if (!ready.value || !model.value) return
   const input = {
     setId: setId.value || null,
-    prompt:prompt.value.trim(), model:modelId.value, mode:actualMode.value, images:actualMode.value === 'text' ? [] : [...photos.value],
+    prompt:prompt.value, model:modelId.value, mode:actualMode.value, images:actualMode.value === 'text' ? [] : [...photos.value],
     ratio:taskRatio.value, duration:duration.value,
     ...(model.value.resolutions.length ? {resolution:draft.value ? '480p' : resolution.value, audio:audio.value, draft:draft.value} : {}),
   }
@@ -327,7 +327,7 @@ async function submit(newFromUnknown = false) {
         <AssetTray ref="assetTray" :urls="mode === 'text' ? [] : photos" :mode="mode" :limit="limit" :portraits="portraits" :can-use-portraits="!!model?.maxReferences" :disabled="busy || !model"
           @added="addPortrait" @change="updatePhotos" @publishing="publishing = $event" />
         <textarea ref="promptField" v-model="prompt" :disabled="busy" maxlength="4000" aria-label="画面描述"
-          placeholder="描述你想要生成的视频画面" @keydown.ctrl.enter.prevent="submit()" @keydown.meta.enter.prevent="submit()" />
+          placeholder="第一行作为标题，可留空。换行后描述视频画面。" @keydown.ctrl.enter.prevent="submit()" @keydown.meta.enter.prevent="submit()" />
         <button type="button" class="expand" :aria-expanded="expanded" :aria-label="expanded ? '收起输入框' : '展开输入框'" @click="expanded = !expanded"><el-icon><FullScreen /></el-icon></button>
       </div>
       <div v-if="invalid" role="status" class="notice">{{ invalid }}</div>

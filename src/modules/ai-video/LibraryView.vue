@@ -6,6 +6,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { apiMessage } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import VideoPreview from './VideoPreview.vue'
+import TaskDetails from './TaskDetails.vue'
+import TaskProgress from './TaskProgress.vue'
 import { statusLabel, videos, type VideoTask, type CloudTask } from './api'
 
 const router = useRouter()
@@ -118,11 +120,11 @@ function importCloud(task: CloudTask) {
     <template v-else>
       <div v-if="items.length" class="favorite-grid" aria-label="收藏的视频">
         <article v-for="task in items" :key="task.id" class="favorite-card">
-          <VideoPreview :task="task" @updated="updateTask" />
-          <div class="info">
-            <strong>{{ task.prompt || '收藏的视频' }}</strong>
+          <TaskDetails :prompt="task.prompt">
             <small>{{ formatTime(task.created) }}<template v-if="task.duration > 0"> · {{ task.duration }} 秒</template></small>
-          </div>
+          </TaskDetails>
+          <TaskProgress :task="task" />
+          <VideoPreview :task="task" @updated="updateTask" />
         </article>
       </div>
       <el-empty v-else-if="!loading && !error" description="还没有收藏的视频">
@@ -143,8 +145,6 @@ function importCloud(task: CloudTask) {
 .info small { font-size:.85rem; color:var(--muted); margin-top:5px; }
 .info p { margin:8px 0 0; }
 .favorite-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr)); gap:18px; }
-.favorite-card { min-width:0; }
-.favorite-card .info { padding:8px 2px; }
-.favorite-card strong { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+.favorite-card { min-width:0; display:grid; align-content:start; gap:7px; }
 
 </style>

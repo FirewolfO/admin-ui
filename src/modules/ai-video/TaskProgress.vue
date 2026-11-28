@@ -14,10 +14,7 @@ const label = computed(() => {
 </script>
 
 <template>
-  <p class="task-state" role="status">
-    {{ label }}
-    <span v-if="task.message"> · {{ task.message }}</span>
-  </p>
+  <p class="task-state" role="status">{{ label }}</p>
 </template>
 
 <style scoped>
